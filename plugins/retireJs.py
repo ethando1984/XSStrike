@@ -143,10 +143,6 @@ def _to_comparable(n):
     return n
 
 
-def _replace_version(jsRepoJsonAsText):
-    return re.sub(r'[.0-9]*', '[0-9][0-9.a-z_\-]+', jsRepoJsonAsText)
-
-
 def is_vulnerable(results):
     for r in results:
         if ('vulnerabilities' in r):
