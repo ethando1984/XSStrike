@@ -118,10 +118,11 @@ python xsstrike.py --scan-dir ./myapp --json-out report.json
 python xsstrike.py --scan-dir ./myapp --scan-limit 10
 ```
 
-The scanner detects XSS sinks, SQL/command/LDAP/template injection, insecure
-deserialization, path traversal, XXE, weak cryptography, hardcoded secrets
-(AWS/GitHub/Stripe keys, JWTs, private keys), SSRF, open redirects, permissive
-CORS, disabled CSRF and more. Each finding is tagged with its CWE id. The
+The scanner detects XSS sinks, SQL/command/LDAP/template injection, LLM prompt
+injection (CWE-1427), insecure deserialization, path traversal, XXE, weak
+cryptography, hardcoded secrets (AWS/GitHub/Stripe keys, JWTs, private keys),
+SSRF, open redirects, permissive CORS, disabled CSRF and more. Each finding is
+tagged with its CWE id. The
 process exits with code `1` when any `CRITICAL` or `HIGH` finding is present, so
 it can gate a build.
 
