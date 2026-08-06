@@ -57,6 +57,7 @@ Apart from that, XSStrike has crawling, fuzzing, parameter discovery, WAF detect
 - Highly researched work-flow
 - Complete HTTP support
 - Bruteforce payloads from a file
+- Multi-language static source code scanning
 - Powered by [Photon](https://github.com/s0md3v/Photon), [Zetanize](https://github.com/s0md3v/zetanize) and [Arjun](https://github.com/s0md3v/Arjun)
 - Payload Encoding
 
@@ -72,6 +73,67 @@ Now, XSStrike can be used at any time as follows:
 ```
 python xsstrike.py
 ```
+
+### Static Code Scanning
+Besides scanning live web targets, XSStrike can statically scan a source code
+directory for common security vulnerabilities. This mode needs no network
+access and no extra dependencies, and it supports ~25 languages (Python,
+JavaScript/TypeScript, PHP, Java, Go, Ruby, C#, C/C++, Kotlin, Swift, Rust,
+Terraform, SQL, Dockerfile and more).
+
+Scan a directory:
+```
+python xsstrike.py --scan-dir /path/to/source
+```
+
+Useful options:
+
+| Option | Description |
+| --- | --- |
+| `--scan-dir <path>` | Directory to scan |
+| `--min-severity <level>` | Minimum severity to report: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` (default `LOW`) |
+| `--json-out <file>` | Write the full report as JSON |
+| `--scan-all-files` | Also scan files with unknown extensions |
+| `--scan-limit <n>` | Cap the number of findings printed, highest severity first (`0` = no limit) |
+
+Examples:
+```
+# Only show high-impact issues
+python xsstrike.py --scan-dir ./myapp --min-severity HIGH
+
+# Save a machine-readable report (useful in CI)
+python xsstrike.py --scan-dir ./myapp --json-out report.json
+
+# Show only the 10 most severe findings on screen
+python xsstrike.py --scan-dir ./myapp --scan-limit 10
+```
+
+The scanner detects XSS sinks, SQL/command/LDAP/template injection, insecure
+deserialization, path traversal, XXE, weak cryptography, hardcoded secrets
+(AWS/GitHub/Stripe keys, JWTs, private keys), SSRF, open redirects, permissive
+CORS, disabled CSRF and more. Each finding is tagged with its CWE id. The
+process exits with code `1` when any `CRITICAL` or `HIGH` finding is present, so
+it can gate a build.
+
+To exclude paths, create a `.xsstrikeignore` file in the scan root with one glob
+pattern per line.
+
+#### Pre-commit hook
+A git hook is provided that runs the scanner on your **staged files** before
+each commit and blocks the commit if it introduces a `CRITICAL` or `HIGH`
+finding. Install it once per clone:
+```
+scripts/hooks/install.sh
+```
+This points `core.hooksPath` at the versioned `scripts/hooks` directory. The
+hook needs only the standard library (no web-scanning dependencies).
+
+- Adjust the blocking threshold: `git config xsstrike.minSeverity CRITICAL`
+- Bypass the check for a single commit: `git commit --no-verify`
+- Uninstall: `git config --unset core.hooksPath`
+
+If you use the [pre-commit](https://pre-commit.com) framework instead, a
+`.pre-commit-config.yaml` is included — just run `pre-commit install`.
 
 ### Documentation
 - [Usage](https://github.com/s0md3v/XSStrike/wiki/Usage)

@@ -1,0 +1,22 @@
+# Paths excluded from `xsstrike --scan-dir` (one glob per line, matched against
+# the path relative to the scan root and against the bare filename).
+#
+# The entries below are XSStrike's own by-design behaviour or self-references,
+# not vulnerabilities. Remove a line if you want the scanner to flag it.
+
+# The scanner's rule definitions contain vulnerability regexes that match
+# themselves when scanned.
+core/staticScanner.py
+
+# XSStrike intentionally disables TLS verification to reach broken/self-signed
+# hosts while testing them.
+core/requester.py
+
+# The updater shells out to git/cp by design.
+core/updater.py
+
+# Vulnerability signature database; the descriptions mention sinks like eval().
+db/definitions.json
+
+# Deliberately vulnerable XSS test fixture.
+test.html
