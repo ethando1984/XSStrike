@@ -1,0 +1,52 @@
+name: codescan
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  codescan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # gitleaks needs full history
+
+      - name: Install scanners
+        run: |
+          python -m pip install --quiet semgrep
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin
+          curl -sSfL -o /tmp/gitleaks.tgz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
+          tar -xzf /tmp/gitleaks.tgz -C /usr/local/bin gitleaks
+
+      - name: Run codescan
+        env:
+          SARIF: '1'
+          FAIL_ON_SECRETS: '1'
+          FAIL_ON_SAST: '0'
+        run: |
+          chmod +x scripts/codescan.sh
+          scripts/codescan.sh . -o "$GITHUB_WORKSPACE/.codescan"
+
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: .codescan
+
+      - name: Upload raw reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codescan-reports
+          path: .codescan/
