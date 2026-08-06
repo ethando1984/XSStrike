@@ -81,6 +81,14 @@ parser.add_argument('--file-log-level', help='File logging level', dest='file_lo
                     choices=core.log.log_config.keys(), default=None)
 parser.add_argument('--log-file', help='Name of the file to log', dest='log_file',
                     default=core.log.log_file)
+parser.add_argument('--scan-dir', help='scan a source code directory for vulnerabilities',
+                    dest='scanDir')
+parser.add_argument('--min-severity', help='minimum severity to report (CRITICAL/HIGH/MEDIUM/LOW)',
+                    dest='minSeverity', default='LOW')
+parser.add_argument('--json-out', help='write the source scan report to a JSON file',
+                    dest='jsonOut')
+parser.add_argument('--scan-all-files', help='also scan files with unknown extensions',
+                    dest='scanAllFiles', action='store_true')
 args = parser.parse_args()
 
 # Pull all parameter values of dict from argparse namespace into local variables of name == key
@@ -121,6 +129,7 @@ from core.updater import updater
 from core.utils import extractHeaders, reader, converter
 
 from modes.bruteforcer import bruteforcer
+from modes.codeScan import codeScan
 from modes.crawl import crawl
 from modes.scan import scan
 from modes.singleFuzz import singleFuzz
@@ -161,6 +170,11 @@ if not proxy:
 if update:  # if the user has supplied --update argument
     updater()
     quit()  # quitting because files have been changed
+
+if args.scanDir:  # static source code scan, no target url needed
+    sys.exit(codeScan(args.scanDir, output=args.jsonOut,
+                      min_severity=args.minSeverity,
+                      include_unknown=args.scanAllFiles))
 
 if not target and not args_seeds:  # if the user hasn't supplied a url
     logger.no_format('\n' + parser.format_help().lower())

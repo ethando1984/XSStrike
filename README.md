@@ -57,6 +57,7 @@ Apart from that, XSStrike has crawling, fuzzing, parameter discovery, WAF detect
 - Highly researched work-flow
 - Complete HTTP support
 - Bruteforce payloads from a file
+- Multi-language static source code scanning
 - Powered by [Photon](https://github.com/s0md3v/Photon), [Zetanize](https://github.com/s0md3v/zetanize) and [Arjun](https://github.com/s0md3v/Arjun)
 - Payload Encoding
 
@@ -72,6 +73,46 @@ Now, XSStrike can be used at any time as follows:
 ```
 python xsstrike.py
 ```
+
+### Static Code Scanning
+Besides scanning live web targets, XSStrike can statically scan a source code
+directory for common security vulnerabilities. This mode needs no network
+access and no extra dependencies, and it supports ~25 languages (Python,
+JavaScript/TypeScript, PHP, Java, Go, Ruby, C#, C/C++, Kotlin, Swift, Rust,
+Terraform, SQL, Dockerfile and more).
+
+Scan a directory:
+```
+python xsstrike.py --scan-dir /path/to/source
+```
+
+Useful options:
+
+| Option | Description |
+| --- | --- |
+| `--scan-dir <path>` | Directory to scan |
+| `--min-severity <level>` | Minimum severity to report: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` (default `LOW`) |
+| `--json-out <file>` | Write the full report as JSON |
+| `--scan-all-files` | Also scan files with unknown extensions |
+
+Examples:
+```
+# Only show high-impact issues
+python xsstrike.py --scan-dir ./myapp --min-severity HIGH
+
+# Save a machine-readable report (useful in CI)
+python xsstrike.py --scan-dir ./myapp --json-out report.json
+```
+
+The scanner detects XSS sinks, SQL/command/LDAP/template injection, insecure
+deserialization, path traversal, XXE, weak cryptography, hardcoded secrets
+(AWS/GitHub/Stripe keys, JWTs, private keys), SSRF, open redirects, permissive
+CORS, disabled CSRF and more. Each finding is tagged with its CWE id. The
+process exits with code `1` when any `CRITICAL` or `HIGH` finding is present, so
+it can gate a build.
+
+To exclude paths, create a `.xsstrikeignore` file in the scan root with one glob
+pattern per line.
 
 ### Documentation
 - [Usage](https://github.com/s0md3v/XSStrike/wiki/Usage)
