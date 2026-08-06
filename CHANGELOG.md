@@ -1,3 +1,16 @@
+### Unreleased
+- Upgraded the retire.js vulnerable-JS-library database (`db/definitions.json`)
+  to the latest upstream (34 → 76 components, current CVEs)
+- Hardened the retireJs plugin against the fuller dataset:
+  - Skip JS-only regex constructs Python's `re` can't compile instead of
+    aborting the scan
+  - Report vulnerabilities with a missing `CVE`/`summary` as `N/A` instead
+    of crashing
+  - Deduplicate findings without the lossy string round-trip that broke on
+    quotes/apostrophes in advisory text
+  - No longer flag an up-to-date library as "Vulnerable" when only its
+    version matched and no known vulnerabilities apply
+
 ### 3.2.0
 - Added an LLM **prompt injection** scanning mode (`--prompt-injection`)
   with baseline fingerprinting and system-prompt leak heuristics
