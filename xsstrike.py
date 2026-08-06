@@ -15,9 +15,10 @@ try:
     try:
         import fuzzywuzzy
     except ImportError:
-        import os
+        import subprocess
+        import sys
         print ('%s fuzzywuzzy isn\'t installed, installing now.' % info)
-        ret_code = os.system('pip3 install fuzzywuzzy')
+        ret_code = subprocess.call([sys.executable, '-m', 'pip', 'install', 'fuzzywuzzy'])
         if(ret_code != 0):
             print('%s fuzzywuzzy installation failed.' % bad)
             quit()
