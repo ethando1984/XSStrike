@@ -105,7 +105,6 @@ jsonData = args.jsonData
 paramData = args.paramData
 encode = args.encode
 fuzz = args.fuzz
-promptInjection = args.promptInjection
 update = args.update
 timeout = args.timeout
 proxy = args.proxy
@@ -191,7 +190,7 @@ if not target and not args_seeds:  # if the user hasn't supplied a url
 
 if fuzz:
     singleFuzz(target, paramData, encoding, headers, delay, timeout)
-elif promptInjection:
+elif args.promptInjection:
     promptInjection(target, paramData, encoding, headers, delay, timeout, skip)
 elif not recursive and not args_seeds:
     if args_file:
