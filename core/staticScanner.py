@@ -129,6 +129,16 @@ RULES = [
          regex=r'(?:\$where["\']?\s*:|\.where\s*\(\s*["\'][^"\']*\+)',
          desc='NoSQL query built from raw input.'),
 
+    # ---------------- LLM / Prompt Injection ----------------
+    dict(id='llm-prompt-untrusted', name='Prompt injection via prompt building', severity='HIGH', cwe='CWE-1427',
+         langs=[ANY],
+         regex=r'(?i)\b(?:system_prompt|user_prompt|prompt|instruction|messages?)\b\s*(?:=|\+=)\s*[^=\n]*?(?:\+\s*\w|f["\'`]|\.format\s*\(|\$\{|%\s*\(|%s)',
+         desc='LLM prompt assembled by concatenation/interpolation; keep untrusted input out of the instruction context.'),
+    dict(id='llm-call-untrusted-input', name='Untrusted input passed to LLM call', severity='HIGH', cwe='CWE-1427',
+         langs=[ANY],
+         regex=r'(?i)(?:openai|anthropic|genai|cohere|ollama|ChatCompletion|chat\.completions\.create|messages\.create|generate_content|\bllm\b|chain\.(?:run|invoke)|\.(?:predict|complete)\s*\()[^\n]*(?:request\.(?:args|form|json|body|values|GET|POST|params)|req\.(?:body|query|params)|params\[|user_input|\binput\s*\(|\$_(?:GET|POST|REQUEST)|flask\.request)',
+         desc='Request/user data flows into an LLM API call on the same line; treat model output as untrusted and isolate user content.'),
+
     # ---------------- Deserialization / file ----------------
     dict(id='insecure-deser', name='Insecure deserialization', severity='CRITICAL', cwe='CWE-502',
          langs=[ANY],
