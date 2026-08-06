@@ -137,6 +137,19 @@ def log_red_line(self, amount=60, level='INFO'):
     _switch_to_default_loggers(self)
 
 
+def log_box(self, lines, title=None, level='INFO', color=red, width=None):
+    """Log a DOS-style boxed panel without the usual log-line prefix.
+
+    ``lines`` may be a single string or a list of pre-formatted rows.
+    """
+    if isinstance(lines, str):
+        lines = lines.splitlines() or ['']
+    panel = draw_box(list(lines), title=title, color=color, width=width)
+    _switch_to_no_format_loggers(self)
+    _get_level_and_log(self, panel, level)
+    _switch_to_default_loggers(self)
+
+
 def log_no_format(self, msg='', level='INFO'):
     _switch_to_no_format_loggers(self)
     _get_level_and_log(self, msg, level)
@@ -187,6 +200,8 @@ def setup_logger(name='xsstrike'):
 
     # Create logger method to only log a red line
     logger.red_line = MethodType(log_red_line, logger)
+    # Create logger method to draw a DOS-style boxed panel
+    logger.box = MethodType(log_box, logger)
     # Create logger method to log without format
     logger.no_format = MethodType(log_no_format, logger)
     # Create logger method to convert data to json and log with debug level
