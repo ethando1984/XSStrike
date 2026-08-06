@@ -3,7 +3,7 @@ import re
 from urllib.parse import urlparse, quote, unquote
 
 from core.checker import checker
-from core.colors import end, green, que
+from core.colors import end, green, que, good, bad, info, yellow, red
 import core.config
 from core.config import xsschecker, minEfficiency
 from core.dom import dom
@@ -56,6 +56,11 @@ def scan(target, paramData, encoding, headers, delay, timeout, skipDOM, skip):
     else:
         logger.good('WAF Status: %sOffline%s' % (green, end))
 
+    # Stats collected across every tested parameter for the closing summary panel
+    reflectionsTotal = 0
+    payloadsTotal = 0
+    vulnCount = 0
+
     for paramName in params.keys():
         paramsCopy = copy.deepcopy(params)
         logger.info('Testing parameter: %s' % paramName)
@@ -72,6 +77,7 @@ def scan(target, paramData, encoding, headers, delay, timeout, skipDOM, skip):
             continue
         else:
             logger.info('Reflections found: %i' % len(occurences))
+            reflectionsTotal += len(occurences)
 
         logger.run('Analysing reflections')
         efficiencies = filterChecker(
@@ -86,6 +92,7 @@ def scan(target, paramData, encoding, headers, delay, timeout, skipDOM, skip):
             logger.error('No vectors were crafted.')
             continue
         logger.info('Payloads generated: %i' % total)
+        payloadsTotal += total
         progress = 0
         for confidence, vects in vectors.items():
             for vect in vects:
@@ -103,6 +110,7 @@ def scan(target, paramData, encoding, headers, delay, timeout, skipDOM, skip):
                         efficiencies.append(0)
                 bestEfficiency = max(efficiencies)
                 if bestEfficiency == 100 or (vect[0] == '\\' and bestEfficiency >= 95):
+                    vulnCount += 1
                     logger.red_line()
                     logger.good('Payload: %s' % loggerVector)
                     logger.info('Efficiency: %i' % bestEfficiency)
@@ -113,8 +121,27 @@ def scan(target, paramData, encoding, headers, delay, timeout, skipDOM, skip):
                         if choice != 'y':
                             quit()
                 elif bestEfficiency > minEfficiency:
+                    vulnCount += 1
                     logger.red_line()
                     logger.good('Payload: %s' % loggerVector)
                     logger.info('Efficiency: %i' % bestEfficiency)
                     logger.info('Confidence: %i' % confidence)
         logger.no_format('')
+
+    # Closing DOS-style summary panel
+    wafLabel = ('%s%s%s' % (yellow, WAF, end)) if WAF else ('%sOffline%s' % (green, end))
+    vulnColor = red if vulnCount else green
+    frameColor = red if vulnCount else green
+    label = '{:<11}'.format
+    summary = [
+        '%s %s: %s' % (info, label('Target'), url),
+        '%s %s: %s' % (good if not WAF else bad, label('WAF'), wafLabel),
+        '%s %s: %i' % (info, label('Parameters'), len(params)),
+        '%s %s: %i' % (info, label('Reflections'), reflectionsTotal),
+        '%s %s: %i' % (info, label('Payloads'), payloadsTotal),
+        '%s %s: %s%i%s' % (
+            good if vulnCount else info, label('Vulnerable'),
+            vulnColor, vulnCount, end),
+    ]
+    logger.box(summary, title='Scan Summary',
+               level='good' if vulnCount else 'info', color=frameColor)

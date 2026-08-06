@@ -2,12 +2,10 @@
 
 from __future__ import print_function
 
-from core.colors import end, red, white, bad, info
+from core.colors import end, red, white, bad, info, banner
 
-# Just a fancy ass banner
-print('''%s
-\tXSStrike %sv3.2.0
-%s''' % (red, white, end))
+# A DOS-style boxed banner
+print(banner('v3.2.0'))
 
 try:
     import concurrent.futures

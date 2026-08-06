@@ -17,10 +17,14 @@ def wafDetector(url, params, headers, GET, delay, timeout):
     # Opens the noise injected payload
     response = requester(url, params, headers, GET, delay, timeout)
     page = response.text
-    code = str(response.status_code)
+    code = response.status_code
     headers = str(response.headers)
     logger.debug('Waf Detector code: {}'.format(code))
     logger.debug_json('Waf Detector headers:', response.headers)
+
+    if code is None:  # request failed (e.g. target unreachable); can't fingerprint a WAF
+        return None
+    code = str(code)
 
     if int(code) >= 400:
         bestMatch = [0, None]
