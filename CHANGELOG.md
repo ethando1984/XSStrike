@@ -1,3 +1,14 @@
+### 3.2.0
+- Added an LLM **prompt injection** scanning mode (`--prompt-injection`)
+  with baseline fingerprinting and system-prompt leak heuristics
+- Added multi-language **static source code scanning** (`--scan-dir`)
+  with `--scan-limit` and `--min-severity` controls
+- Added static-scan rules for detecting LLM prompt injection in source
+- Added a pre-commit hook that runs `--scan-dir` on staged files
+- Improved crawler link discovery with optional headless rendering
+- Fixed pip fallback to use `sys.executable` when auto-installing fuzzywuzzy
+- Split test dependencies into `requirements-dev.txt`
+
 ### 3.1.5
 - Fix color bug that resulted in DOM XSS vulnerabilities not
   being reported on certain systems (Windows, macOS, iOS)
