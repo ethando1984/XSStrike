@@ -35,7 +35,13 @@ def scan(data, extractor, definitions, matcher=None):
 
 def _simple_match(regex, data):
     regex = deJSON(regex)
-    match = re.search(regex, data)
+    try:
+        match = re.search(regex, data)
+    except re.error:
+        # Some upstream retire.js patterns use JS-only regex constructs
+        # (e.g. variable-width look-behind) that Python's re cannot compile.
+        # Skip them rather than aborting the whole scan.
+        return None
     return match.group(1) if match else None
 
 
@@ -137,10 +143,6 @@ def _to_comparable(n):
     return n
 
 
-def _replace_version(jsRepoJsonAsText):
-    return re.sub(r'[.0-9]*', '[0-9][0-9.a-z_\-]+', jsRepoJsonAsText)
-
-
 def is_vulnerable(results):
     for r in results:
         if ('vulnerabilities' in r):
@@ -185,17 +187,20 @@ def main_scanner(uri, response):
         result['component'] = uri_scan_result[0]['component']
         result['version'] = uri_scan_result[0]['version']
         result['vulnerabilities'] = []
-        vulnerabilities = set()
+        seen = set()
         for i in uri_scan_result:
-            k = set()
-            try:
-                for j in i['vulnerabilities']:
-                    vulnerabilities.add(str(j))
-            except KeyError:
-                pass
-        for vulnerability in vulnerabilities:
-            result['vulnerabilities'].append(json.loads(vulnerability.replace('\'', '"')))
-        return result
+            for vulnerability in i.get('vulnerabilities', []):
+                # Deduplicate on a stable serialization without mangling the
+                # data: the old str()/quote-swap round-trip broke on any
+                # summary or info text containing a quote or apostrophe.
+                key = json.dumps(vulnerability, sort_keys=True)
+                if key not in seen:
+                    seen.add(key)
+                    result['vulnerabilities'].append(vulnerability)
+        # Only report a component that actually has known vulnerabilities;
+        # a mere version match on an up-to-date library is not a finding.
+        if result['vulnerabilities']:
+            return result
 
 def retireJs(url, response):
     scripts = js_extractor(response)
@@ -212,7 +217,12 @@ def retireJs(url, response):
                 details = result['vulnerabilities']
                 logger.info('Total vulnerabilities: %i' % len(details))
                 for detail in details:
-                    logger.info('%sSummary:%s %s' % (green, end, detail['identifiers']['summary']))
-                    logger.info('Severity: %s' % detail['severity'])
-                    logger.info('CVE: %s' % detail['identifiers']['CVE'][0])
+                    identifiers = detail.get('identifiers', {}) or {}
+                    summary = identifiers.get('summary')
+                    if not summary:
+                        summary = identifiers.get('githubID') or 'N/A'
+                    logger.info('%sSummary:%s %s' % (green, end, summary))
+                    logger.info('Severity: %s' % detail.get('severity', 'unknown'))
+                    cve = identifiers.get('CVE') or []
+                    logger.info('CVE: %s' % (cve[0] if cve else 'N/A'))
                 logger.red_line()

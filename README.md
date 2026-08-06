@@ -59,6 +59,8 @@ Apart from that, XSStrike has crawling, fuzzing, parameter discovery, WAF detect
 - Bruteforce payloads from a file
 - Multi-language static source code scanning
 - LLM prompt injection scanning
+- Optional headless page rendering while crawling (Playwright)
+- Up-to-date outdated JS library scanning (retire.js database)
 - Powered by [Photon](https://github.com/s0md3v/Photon), [Zetanize](https://github.com/s0md3v/zetanize) and [Arjun](https://github.com/s0md3v/Arjun)
 - Payload Encoding
 
@@ -145,6 +147,33 @@ hook needs only the standard library (no web-scanning dependencies).
 
 If you use the [pre-commit](https://pre-commit.com) framework instead, a
 `.pre-commit-config.yaml` is included — just run `pre-commit install`.
+
+### Headless Crawling
+By default the crawler discovers links from the raw HTML response. Modern,
+JavaScript-heavy pages often build their markup client-side, so those links
+never appear in the static response. Pass `--headless` to render each page with
+a headless browser (Playwright) while crawling, so dynamically injected links
+and parameters are discovered too:
+
+```bash
+python xsstrike.py -u "https://example.com" --crawl --headless
+```
+
+This needs Playwright installed (`pip install playwright` then
+`playwright install chromium`). Without it, XSStrike falls back to static
+crawling automatically.
+
+### Outdated JavaScript Library Scanning
+While crawling, XSStrike fingerprints the JavaScript libraries a page loads and
+flags versions with known vulnerabilities, using a bundled
+[retire.js](https://github.com/RetireJS/retire.js) database
+([`db/definitions.json`](db/definitions.json)). The database ships current — 76
+components with up-to-date CVEs — and the detector is hardened against real-world
+advisory data: it skips JS-only regex constructs Python can't compile instead of
+aborting the scan, reports findings with a missing CVE/summary as `N/A` rather
+than crashing, and won't flag an up-to-date library as vulnerable when only its
+version matched. No extra flags are required — it runs as part of a normal
+crawl/scan.
 
 ### Documentation
 - [Usage](https://github.com/s0md3v/XSStrike/wiki/Usage)
