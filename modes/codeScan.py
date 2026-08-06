@@ -42,8 +42,13 @@ def codeScan(path, output=None, min_severity='LOW', include_unknown=False, limit
         extra_ignore=extra_ignore)
     logger.no_format('')
 
-    cutoff = SEVERITY_ORDER.index(min_severity.upper()) \
-        if min_severity.upper() in SEVERITY_ORDER else len(SEVERITY_ORDER) - 1
+    level = min_severity.upper()
+    if level in SEVERITY_ORDER:
+        cutoff = SEVERITY_ORDER.index(level)
+    else:
+        cutoff = len(SEVERITY_ORDER) - 1
+        logger.warning('Unknown --min-severity %r, expected one of %s; reporting all.'
+                       % (min_severity, '/'.join(SEVERITY_ORDER)))
     findings = [f for f in findings
                 if SEVERITY_ORDER.index(f.severity) <= cutoff]
 
