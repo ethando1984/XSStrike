@@ -94,6 +94,7 @@ Useful options:
 | `--min-severity <level>` | Minimum severity to report: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` (default `LOW`) |
 | `--json-out <file>` | Write the full report as JSON |
 | `--scan-all-files` | Also scan files with unknown extensions |
+| `--scan-limit <n>` | Cap the number of findings printed, highest severity first (`0` = no limit) |
 
 Examples:
 ```
@@ -102,6 +103,9 @@ python xsstrike.py --scan-dir ./myapp --min-severity HIGH
 
 # Save a machine-readable report (useful in CI)
 python xsstrike.py --scan-dir ./myapp --json-out report.json
+
+# Show only the 10 most severe findings on screen
+python xsstrike.py --scan-dir ./myapp --scan-limit 10
 ```
 
 The scanner detects XSS sinks, SQL/command/LDAP/template injection, insecure
