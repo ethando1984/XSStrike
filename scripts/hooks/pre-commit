@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# XSStrike pre-commit hook — statically scan staged source files with --scan-dir.
+#
+# Blocks the commit when a CRITICAL or HIGH finding is introduced.
+# Bypass a single commit with:  git commit --no-verify
+#
+# Config via env or `git config`:
+#   XSSTRIKE_MIN_SEVERITY   minimum severity that blocks (default HIGH)
+#   XSSTRIKE_PYTHON         python interpreter to use (default: repo .venv, else python3)
+set -uo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT" || exit 1
+
+MIN_SEVERITY="${XSSTRIKE_MIN_SEVERITY:-$(git config --get xsstrike.minSeverity || echo HIGH)}"
+
+# Pick an interpreter. The scanner needs only the standard library, so plain
+# python3 is enough; the repo venv and an explicit override are honoured first.
+if [ -n "${XSSTRIKE_PYTHON:-}" ]; then
+  PY="$XSSTRIKE_PYTHON"
+elif [ -x "$REPO_ROOT/.venv/bin/python" ]; then
+  PY="$REPO_ROOT/.venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+  PY="python3"
+else
+  PY="python"
+fi
+
+# Stage the exact staged content (not the working tree) into a temp dir.
+# NUL-separated read keeps paths with spaces/newlines safe and works on bash 3.2.
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+count=0
+while IFS= read -r -d '' f; do
+  [ -z "$f" ] && continue
+  mkdir -p "$TMP/$(dirname "$f")"
+  # `:0:path` reads the staged blob from the index.
+  if git show ":0:$f" > "$TMP/$f" 2>/dev/null; then
+    count=$((count + 1))
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+if [ "$count" -eq 0 ]; then
+  exit 0
+fi
+
+# Carry the repo's ignore list into the temp scan root so exclusions apply.
+if [ -f "$REPO_ROOT/.xsstrikeignore" ]; then
+  cp "$REPO_ROOT/.xsstrikeignore" "$TMP/.xsstrikeignore"
+fi
+
+echo "xsstrike: scanning $count staged file(s) (min severity: $MIN_SEVERITY)..."
+
+# Invoke the scanner module directly rather than xsstrike.py, so the scan does
+# not depend on the web-scanning runtime deps (fuzzywuzzy etc). Exits 1 on a
+# CRITICAL/HIGH finding; exits 3 if the scanner itself fails to run, so a broken
+# gate never silently passes a commit.
+PYTHONPATH="$REPO_ROOT" "$PY" - "$TMP" "$MIN_SEVERITY" <<'PYEOF'
+import sys
+try:
+    from modes.codeScan import codeScan
+except Exception as error:  # scanner unavailable -> do not silently pass
+    sys.stderr.write("xsstrike: scanner unavailable: %s\n" % error)
+    sys.exit(3)
+sys.exit(codeScan(sys.argv[1], min_severity=sys.argv[2]))
+PYEOF
+RC=$?
+
+if [ "$RC" -eq 3 ]; then
+  echo
+  echo "  ✖ commit blocked: the XSStrike scanner failed to run."
+  echo "    Fix the environment or bypass once with:  git commit --no-verify"
+  echo
+  exit 1
+fi
+
+if [ "$RC" -ne 0 ]; then
+  echo
+  echo "  ✖ commit blocked: CRITICAL/HIGH security findings in staged changes."
+  echo "    Review the findings above, fix them, and re-stage."
+  echo "    To bypass this check for one commit:  git commit --no-verify"
+  echo
+  exit 1
+fi
+
+echo "xsstrike: no blocking findings."
+exit 0
