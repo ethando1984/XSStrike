@@ -105,8 +105,9 @@ RULES = [
          desc='shell=True with dynamic input allows arbitrary command execution.'),
     dict(id='cmdi-os-system', name='Command injection via os.system', severity='HIGH', cwe='CWE-78',
          langs=['python'],
-         regex=r'os\.(?:system|popen)\s*\(',
-         desc='os.system/os.popen pass the string to a shell.'),
+         regex=r'os\.(?:system|popen)\s*\(\s*(?![\'"][^\'"]*[\'"]\s*\))'
+               r'[^)]*(?:\+|%|\.format\b|f[\'"]|\bformat_map\b|[A-Za-z_]\w*\s*[,)])',
+         desc='os.system/os.popen with dynamic input passes it to a shell.'),
     dict(id='cmdi-exec', name='Command execution sink', severity='HIGH', cwe='CWE-78',
          langs=['javascript', 'typescript', 'php', 'ruby', 'go', 'java'],
          regex=r'(?:child_process\.exec|exec_r?\s*\(|\bsystem\s*\(|\bshell_exec\s*\(|\bpassthru\s*\(|`[^`]*\$\{|Runtime\.getRuntime\(\)\.exec|os/exec\.Command)',

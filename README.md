@@ -114,6 +114,23 @@ it can gate a build.
 To exclude paths, create a `.xsstrikeignore` file in the scan root with one glob
 pattern per line.
 
+#### Pre-commit hook
+A git hook is provided that runs the scanner on your **staged files** before
+each commit and blocks the commit if it introduces a `CRITICAL` or `HIGH`
+finding. Install it once per clone:
+```
+scripts/hooks/install.sh
+```
+This points `core.hooksPath` at the versioned `scripts/hooks` directory. The
+hook needs only the standard library (no web-scanning dependencies).
+
+- Adjust the blocking threshold: `git config xsstrike.minSeverity CRITICAL`
+- Bypass the check for a single commit: `git commit --no-verify`
+- Uninstall: `git config --unset core.hooksPath`
+
+If you use the [pre-commit](https://pre-commit.com) framework instead, a
+`.pre-commit-config.yaml` is included — just run `pre-commit install`.
+
 ### Documentation
 - [Usage](https://github.com/s0md3v/XSStrike/wiki/Usage)
 - [Compatibility & Dependencies](https://github.com/s0md3v/XSStrike/wiki/Compatibility-&-Dependencies)

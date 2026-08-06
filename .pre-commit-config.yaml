@@ -1,0 +1,15 @@
+# pre-commit framework config (https://pre-commit.com).
+# Install once:  pip install pre-commit && pre-commit install
+#
+# Runs the XSStrike static scanner on staged files before each commit and
+# blocks the commit on CRITICAL/HIGH findings.
+repos:
+  - repo: local
+    hooks:
+      - id: xsstrike-scan
+        name: XSStrike static code scan
+        entry: scripts/hooks/pre-commit
+        language: script
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
