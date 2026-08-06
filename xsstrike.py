@@ -91,6 +91,8 @@ parser.add_argument('--json-out', help='write the source scan report to a JSON f
                     dest='jsonOut')
 parser.add_argument('--scan-all-files', help='also scan files with unknown extensions',
                     dest='scanAllFiles', action='store_true')
+parser.add_argument('--scan-limit', help='max number of findings to display (0 = no limit)',
+                    dest='scanLimit', type=int, default=0)
 args = parser.parse_args()
 
 # Pull all parameter values of dict from argparse namespace into local variables of name == key
@@ -176,7 +178,8 @@ if update:  # if the user has supplied --update argument
 if args.scanDir:  # static source code scan, no target url needed
     sys.exit(codeScan(args.scanDir, output=args.jsonOut,
                       min_severity=args.minSeverity,
-                      include_unknown=args.scanAllFiles))
+                      include_unknown=args.scanAllFiles,
+                      limit=args.scanLimit))
 
 if not target and not args_seeds:  # if the user hasn't supplied a url
     logger.no_format('\n' + parser.format_help().lower())
