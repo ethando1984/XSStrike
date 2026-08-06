@@ -71,6 +71,8 @@ parser.add_argument('--skip', help='don\'t ask to continue',
                     dest='skip', action='store_true')
 parser.add_argument('--skip-dom', help='skip dom checking',
                     dest='skipDOM', action='store_true')
+parser.add_argument('--headless', help='render pages with a headless browser (Playwright) while crawling',
+                    dest='headless', action='store_true')
 parser.add_argument('--blind', help='inject blind XSS payload while crawling',
                     dest='blindXSS', action='store_true')
 parser.add_argument('--console-log-level', help='Console logging level',
@@ -196,7 +198,8 @@ else:
         host = urlparse(target).netloc
         main_url = scheme + '://' + host
         crawlingResult = photon(target, headers, level,
-                                threadCount, delay, timeout, skipDOM)
+                                threadCount, delay, timeout, skipDOM,
+                                args.headless)
         forms = crawlingResult[0]
         domURLs = list(crawlingResult[1])
         difference = abs(len(domURLs) - len(forms))

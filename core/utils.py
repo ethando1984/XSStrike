@@ -237,6 +237,57 @@ def deJSON(data):
     return data.replace('\\\\', '\\')
 
 
+def extractLinks(response, scheme, host, main_url):
+    """Scrape in-scope links from a response body.
+
+    Goes beyond plain <a href> anchors: it also pulls href/src/action
+    attributes and any absolute or root-relative URL that appears inside
+    inline scripts or JSON (e.g. API endpoints on JS-heavy / SPA sites).
+    Returns a set of normalised, in-scope, absolute URLs.
+
+    Escaped slashes (``\\/``) that show up in JSON/JS string literals are
+    unescaped so embedded endpoints are recovered intact.
+    """
+    body = response.replace('\\/', '/').replace('&amp;', '&')
+    links = set()
+    skip_ext = ('.pdf', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico',
+                '.css', '.woff', '.woff2', '.ttf', '.xls', '.xml',
+                '.docx', '.doc', '.mp4', '.webp')
+
+    # 1) href / src / action attributes on any tag
+    attr_matches = re.findall(
+        r'''(?:href|src|action)\s*=\s*["']([^"'#>]+)''', body, re.I)
+    # 2) absolute in-scope URLs appearing anywhere (incl. inside scripts/JSON)
+    abs_matches = re.findall(
+        r'''https?://[^\s"'<>()\\]+''', body, re.I)
+    # 3) root-relative URLs that carry a query string (parameter surface)
+    rel_param_matches = re.findall(
+        r'''["'(](/[^\s"'<>()]*\?[^\s"'<>()]+)''', body)
+
+    for raw in list(attr_matches) + list(abs_matches) + list(rel_param_matches):
+        link = raw.split('#')[0].strip()
+        if not link or link.startswith(('javascript:', 'mailto:', 'tel:', 'data:')):
+            continue
+        # normalise to an absolute URL
+        if link[:4] == 'http':
+            absolute = link
+        elif link[:2] == '//':
+            absolute = scheme + ':' + link
+        elif link[:1] == '/':
+            absolute = main_url + link
+        else:
+            absolute = main_url + '/' + link
+        # scope check: same host only
+        if urlparse(absolute).netloc != host:
+            continue
+        # drop static assets (unless they carry a query string worth testing)
+        path = absolute.split('?')[0].lower()
+        if path.endswith(skip_ext) and '?' not in absolute:
+            continue
+        links.add(absolute)
+    return links
+
+
 def getVar(name):
     return core.config.globalVariables[name]
 
