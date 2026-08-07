@@ -58,6 +58,7 @@ Apart from that, XSStrike has crawling, fuzzing, parameter discovery, WAF detect
 - Complete HTTP support
 - Bruteforce payloads from a file
 - Multi-language static source code scanning
+- Norton Commander style interactive tree browser + scanner
 - LLM prompt injection scanning
 - Optional headless page rendering while crawling (Playwright)
 - Up-to-date outdated JS library scanning (retire.js database)
@@ -166,6 +167,36 @@ hook needs only the standard library (no web-scanning dependencies).
 
 If you use the [pre-commit](https://pre-commit.com) framework instead, a
 `.pre-commit-config.yaml` is included — just run `pre-commit install`.
+
+#### Interactive tree browser
+For exploring a codebase and scanning on demand, `--browse` opens a
+Norton Commander style full-screen TUI: a blue file panel with a live
+per-file/-directory status column, a results pane and a function-key bar. It
+drives the same engine as `--scan-dir` (same rules, same `.xsstrikeignore`), so
+findings match the batch scan.
+
+```
+python xsstrike.py --browse /path/to/source
+```
+
+| Key | Action |
+| --- | --- |
+| `↑ ↓` / `PgUp PgDn` / `Home End` | Move the selection bar |
+| `Enter` | Open a directory / view a scanned file |
+| `Backspace` / `←` | Go up to the parent directory |
+| `F5` / `s` | Scan the selected file or directory |
+| `F2` / `a` | Scan everything under the current directory |
+| `F3` / `v` | View the file with findings highlighted inline |
+| `F4` / `f` | Open the findings report for the selection |
+| `Tab` | Show / hide the results panel |
+| `F1` / `h` | Help |
+| `F10` / `q` | Quit |
+
+Each row shows a live status glyph — blank (not scanned), `✓` (clean) or `✗N`
+(N findings, colored by worst severity) — and directory rows roll up the totals
+of everything scanned beneath them. `--scan-all-files` also applies here to
+include files with unknown extensions. The browser needs an interactive
+terminal (it uses `curses`); for non-interactive/CI use `--scan-dir` instead.
 
 ### Headless Crawling
 By default the crawler discovers links from the raw HTML response. Modern,
