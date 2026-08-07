@@ -1,9 +1,9 @@
 import copy
-from fuzzywuzzy import fuzz
 import re
 from urllib.parse import unquote
 
 from core.config import xsschecker
+from core.fuzz import partial_ratio
 from core.requester import requester
 from core.utils import replaceValue, fillHoles
 
@@ -26,7 +26,7 @@ def checker(url, params, headers, GET, delay, payload, positions, timeout, encod
         try:
             reflected = response[reflectedPositions[num]
                 :reflectedPositions[num]+len(checkString)]
-            efficiency = fuzz.partial_ratio(reflected, checkString.lower())
+            efficiency = partial_ratio(reflected, checkString.lower())
             allEfficiencies.append(efficiency)
         except IndexError:
             pass
@@ -34,7 +34,7 @@ def checker(url, params, headers, GET, delay, payload, positions, timeout, encod
             reflected = response[position:position+len(checkString)]
             if encoding:
                 checkString = encoding(checkString.lower())
-            efficiency = fuzz.partial_ratio(reflected, checkString)
+            efficiency = partial_ratio(reflected, checkString)
             if reflected[:-2] == ('\\%s' % checkString.replace('st4r7s', '').replace('3nd', '')):
                 efficiency = 90
             allEfficiencies.append(efficiency)

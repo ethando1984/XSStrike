@@ -10,18 +10,6 @@ print(banner('v3.2.0'))
 try:
     import concurrent.futures
     from urllib.parse import urlparse
-    try:
-        import fuzzywuzzy
-    except ImportError:
-        import subprocess
-        import sys
-        print ('%s fuzzywuzzy isn\'t installed, installing now.' % info)
-        ret_code = subprocess.call([sys.executable, '-m', 'pip', 'install', 'fuzzywuzzy'])
-        if(ret_code != 0):
-            print('%s fuzzywuzzy installation failed.' % bad)
-            quit()
-        print ('%s fuzzywuzzy has been installed, restart XSStrike.' % info)
-        quit()
 except ImportError:  # throws error in python2
     print('%s XSStrike isn\'t compatible with python2.\n Use python > 3.4 to run XSStrike.' % bad)
     quit()

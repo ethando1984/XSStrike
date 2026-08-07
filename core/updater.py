@@ -1,6 +1,6 @@
 import os
 import re
-from requests import get
+from urllib.request import Request, urlopen
 
 from core.config import changes
 from core.colors import que, info, end, green
@@ -11,8 +11,15 @@ logger = setup_logger(__name__)
 
 def updater():
     logger.run('Checking for updates')
-    latestCommit = get(
-        'https://raw.githubusercontent.com/s0md3v/XSStrike/master/core/config.py').text
+    try:
+        request = Request(
+            'https://raw.githubusercontent.com/ethando1984/XSStrike/master/core/config.py',
+            headers={'User-Agent': 'XSStrike'})
+        with urlopen(request, timeout=10) as response:
+            latestCommit = response.read().decode('utf-8', errors='replace')
+    except Exception:
+        logger.error('Unable to check for updates.')
+        return
 
     if changes not in latestCommit:  # just a hack to see if a new version is available
         changelog = re.search(r"changes = '''(.*?)'''", latestCommit)
@@ -31,7 +38,7 @@ def updater():
         if choice != 'n':
             logger.run('Updating XSStrike')
             os.system(
-                'git clone --quiet https://github.com/s0md3v/XSStrike %s' % (folder))
+                'git clone --quiet https://github.com/ethando1984/XSStrike %s' % (folder))
             os.system('cp -r %s/%s/* %s && rm -r %s/%s/ 2>/dev/null' %
                       (path, folder, path, path, folder))
             logger.good('Update successful!')
