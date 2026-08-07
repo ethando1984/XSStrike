@@ -1,4 +1,5 @@
 import re
+import sys
 import concurrent.futures
 from urllib.parse import urlparse
 
@@ -15,7 +16,10 @@ logger = setup_logger(__name__)
 
 def photon(seedUrl, headers, level, threadCount, delay, timeout, skipDOM, headless=False):
     if headless:
-        if headlessCrawler.is_available():
+        # Only nag about a missing Playwright when the user actually asked for
+        # headless; when it is just the default-on setting, degrade quietly.
+        explicit = '--headless' in sys.argv
+        if headlessCrawler.is_available(warn=explicit):
             logger.info('Headless rendering enabled (crawling single-threaded)')
             threadCount = 1
         else:
