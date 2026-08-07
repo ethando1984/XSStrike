@@ -10,8 +10,14 @@ _browser = None
 _available = None  # None = unknown, True/False once probed
 
 
-def is_available():
-    """Return True if Playwright and a browser binary are usable."""
+def is_available(warn=False):
+    """Return True if the Playwright package is importable.
+
+    This only probes the Python package; a missing *browser binary* surfaces
+    later in :func:`_get_browser`. ``warn`` controls whether an unmet dependency
+    is announced: pass ``True`` only when headless was *explicitly* requested, so
+    that the default-on crawl doesn't nag users who never asked for it.
+    """
     global _available
     if _available is not None:
         return _available
@@ -19,20 +25,39 @@ def is_available():
         from playwright.sync_api import sync_playwright  # noqa: F401
         _available = True
     except ImportError:
-        logger.error(
-            'Headless mode needs Playwright. Install with: '
-            'pip install playwright && playwright install chromium')
+        if warn:
+            logger.warning(
+                'Headless mode needs Playwright; falling back to plain HTTP '
+                'crawling. Install with: pip install playwright && '
+                'playwright install chromium')
+        else:
+            logger.debug('Playwright not installed; crawling with plain HTTP.')
         _available = False
     return _available
 
 
 def _get_browser():
-    global _playwright, _browser
+    global _playwright, _browser, _available
     if _browser is not None:
         return _browser
     from playwright.sync_api import sync_playwright
-    _playwright = sync_playwright().start()
-    _browser = _playwright.chromium.launch(headless=True)
+    pw = sync_playwright().start()
+    try:
+        _browser = pw.chromium.launch(headless=True)
+    except Exception as exc:
+        # The package imports but the browser binary is missing/unlaunchable.
+        # Stop the driver we just started (else it leaks) and mark headless
+        # unavailable so is_available() short-circuits every later URL instead
+        # of restarting a driver and failing to launch again and again.
+        try:
+            pw.stop()
+        except Exception:
+            pass
+        _available = False
+        logger.warning('Headless browser could not launch (%s); falling back '
+                       'to plain HTTP. Run: playwright install chromium' % exc)
+        raise
+    _playwright = pw
     atexit.register(shutdown)
     return _browser
 
