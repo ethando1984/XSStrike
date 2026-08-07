@@ -9,8 +9,8 @@ static scanner from the keyboard, DOS-Commander style:
     Backspace / ←                 go up one directory
     F3 / v                        view the selected file (findings first)
     F4 / f                        jump to the findings report for the selection
-    F5 / s                        scan the selected file or directory
-    F2 / a                        scan every file under the current directory
+    F5 / s                        scan the selected folder's files (XSS) — report in footer
+    F2 / a                        scan every file under the current folder — report in footer
     Tab                           toggle the results panel
     ~                             command line: type and run a shell command
     F1 / h                        help
@@ -103,6 +103,7 @@ class NCBrowser(object):
         self.results = {}       # abspath -> [Finding]  (persists across dirs)
         self.scanned = set()    # abspath of files that have been scanned
         self.message = ''       # transient status message
+        self.last_report = None # footer scan report (F5/F2); cleared on next key
         self.show_panel = True  # results panel visibility
         self.ignore = loadIgnorePatterns(self.root)
         self._load_dir(self.cwd)
@@ -206,9 +207,12 @@ class NCBrowser(object):
         targets = list(self._files_under(path))
         if not targets:
             self.message = 'Nothing scannable in %s' % os.path.basename(path)
+            self.last_report = ['\x00LOW\x01SCAN REPORT · %s' % label,
+                                'Nothing scannable here.']
             return
         total = len(targets)
         found = 0
+        scanned_paths = []
         for i, (full, lang) in enumerate(targets, 1):
             if i % 5 == 0 or i == total:
                 self._flash('Scanning %s  [%d/%d]  %d findings'
@@ -216,16 +220,61 @@ class NCBrowser(object):
             fs = scanFile(full, lang)
             self.results[full] = fs
             self.scanned.add(full)
+            scanned_paths.append(full)
             found += len(fs)
         self.message = 'Scanned %s: %d file(s), %d finding(s)' % (label, total, found)
+        self.last_report = self._build_report(label, scanned_paths, total)
+
+    def _build_report(self, label, paths, total_files):
+        """Summarise the files this scan just touched, as footer lines (<=6).
+
+        Uses the ``\\x00SEV\\x01`` severity-tag convention understood by
+        ``_draw_results`` so each line is coloured by its worst severity.
+        """
+        counts = {s: 0 for s in SEVERITY_ORDER}
+        per_file = []
+        grand = 0
+        for p in paths:
+            fs = self._visible(self.results.get(p, []))
+            if not fs:
+                continue
+            for f in fs:
+                counts[f.severity] = counts.get(f.severity, 0) + 1
+            grand += len(fs)
+            per_file.append((p, len(fs), _worst(fs)))
+        worst = next((s for s in SEVERITY_ORDER if counts[s]), None)
+        head = worst or 'LOW'
+        lines = ['\x00%s\x01SCAN REPORT · %s' % (head, label),
+                 '%d file(s) scanned · %d finding(s)' % (total_files, grand)]
+        if grand == 0:
+            lines.append('\x00LOW\x01No XSS issues found — clean.')
+            return lines
+        abbr = {'CRITICAL': 'CRIT', 'HIGH': 'HIGH', 'MEDIUM': 'MED', 'LOW': 'LOW'}
+        brk = '  '.join('%s %d' % (abbr[s], counts[s])
+                        for s in SEVERITY_ORDER if counts[s])
+        lines.append('\x00%s\x01%s' % (worst, brk))
+        per_file.sort(key=lambda t: (SEVERITY_ORDER.index(t[2]), -t[1]))
+        room = 6 - len(lines)                       # footer holds 6 lines total
+        show = per_file if len(per_file) <= room else per_file[:room - 1]
+        for p, n, sev in show:
+            rel = os.path.relpath(p, self.root)
+            lines.append('\x00%s\x01%s — %d' % (sev, rel, n))
+        if len(per_file) > len(show):
+            lines.append('… %d more file(s) — F4 for the full report'
+                         % (len(per_file) - len(show)))
+        return lines
 
     def _scan_selected(self):
+        """F5 — scan the XSS security of the files in the selected folder
+        (or the selected file), reporting into the footer panel."""
         e = self._current()
         if e is None or e.is_parent:
             return
         self._scan(e.path, e.name)
 
     def _scan_all(self):
+        """F2 — scan every file under the folder currently on screen,
+        reporting into the footer panel."""
         self._scan(self.cwd, os.path.basename(self.cwd) or self.cwd)
 
     # ---- geometry ----------------------------------------------------------
@@ -389,6 +438,8 @@ class NCBrowser(object):
             self._addstr(y, 0, ' ' + text, cp, attr, width=w - 1)
 
     def _detail_lines(self, e, w):
+        if self.last_report is not None:    # F5/F2 scan report takes the footer
+            return self.last_report
         if e is None or e.is_parent:
             return ['Select a file or directory, then press F5 to scan.']
         if e.is_dir:
@@ -626,8 +677,8 @@ class NCBrowser(object):
             '  Enter             open directory  /  view scanned file',
             '  Backspace / Left  go up to the parent directory',
             '',
-            '  F5  / s           scan the selected file or directory',
-            '  F2  / a           scan EVERYTHING under the current directory',
+            '  F5  / s           scan the selected folder for XSS (report in footer)',
+            '  F2  / a           scan EVERYTHING in the current folder (report in footer)',
             '  F3  / v           view the selected file (findings highlighted)',
             '  F4  / f           open the findings report for the selection',
             '  F9  / o           sort:  name -> severity -> size',
@@ -737,6 +788,10 @@ class NCBrowser(object):
             n = len(self.entries)
             lh = self._list_height(self.scr.getmaxyx()[0])
             self.message = ''
+            # The footer scan report survives the draw right after F5/F2, then
+            # clears on the next key so per-file detail comes back.
+            if c not in (curses.KEY_F5, ord('s'), curses.KEY_F2, ord('a')):
+                self.last_report = None
             if c in (curses.KEY_DOWN, ord('j')):
                 self.sel = min(self.sel + 1, n - 1) if n else 0
             elif c in (curses.KEY_UP, ord('k')):

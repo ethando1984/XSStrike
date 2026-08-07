@@ -205,8 +205,8 @@ Bottom: the findings panel for the selection and the function-key bar.
 | `↑ ↓` / `PgUp PgDn` / `Home End` | Move the selection bar |
 | `Enter` | Open a directory / view a scanned file |
 | `Backspace` / `←` | Go up to the parent directory |
-| `F5` / `s` | Scan the selected file or directory |
-| `F2` / `a` | Scan everything under the current directory |
+| `F5` / `s` | Scan the selected folder's files for XSS — report shown in the footer |
+| `F2` / `a` | Scan every file in the current folder — report shown in the footer |
 | `F3` / `v` | View the file with findings highlighted inline |
 | `F4` / `f` | Open the findings report for the selection |
 | `F9` / `o` | Cycle the sort order: name → severity → size |
