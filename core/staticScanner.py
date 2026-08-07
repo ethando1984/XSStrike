@@ -336,13 +336,21 @@ def scanFile(path, lang, skip_comments=True):
 
 def scanDirectory(root, include_unknown=False, skip_comments=True, progress=None,
                   extra_ignore=None):
-    """Scan every source file under root. Returns (findings, files_scanned)."""
+    """Scan every source file under root. Returns (findings, files_scanned).
+
+    ``progress`` is called as ``progress(files_scanned, findings_so_far,
+    current_path)`` for every file, where ``current_path`` is the file about to
+    be scanned. It is called one final time with ``current_path=None`` once the
+    walk completes, so a live status line can be cleared.
+    """
     findings = []
     scanned = 0
     ignore = loadIgnorePatterns(root) + list(extra_ignore or [])
     for path, lang in collectFiles(root, include_unknown, ignore):
+        if progress:
+            progress(scanned, len(findings), path)
         findings.extend(scanFile(path, lang, skip_comments))
         scanned += 1
-        if progress and scanned % 50 == 0:
-            progress(scanned, len(findings))
+    if progress:
+        progress(scanned, len(findings), None)
     return findings, scanned

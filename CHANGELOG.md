@@ -1,4 +1,7 @@
 ### Unreleased
+- Directory scan (`--scan-dir`) now shows a live status line naming the file
+  currently being scanned with a running file/finding count, updated in place
+  on interactive terminals; piped output keeps clean periodic summaries
 - Upgraded the retire.js vulnerable-JS-library database (`db/definitions.json`)
   to the latest upstream (34 → 76 components, current CVEs)
 - Hardened the retireJs plugin against the fuller dataset:

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import json
+import shutil
 import core.log
 
 from core.colors import green, red, yellow, end
@@ -28,8 +30,21 @@ def codeScan(path, output=None, min_severity='LOW', include_unknown=False, limit
     path = os.path.abspath(path)
     logger.run('Scanning source directory: %s' % path)
 
-    def progress(scanned, found):
-        logger.info('Scanned %i files, %i findings\r' % (scanned, found))
+    live = sys.stdout.isatty()
+
+    def progress(scanned, found, current=None):
+        if live:
+            # Show which file is being scanned right now, updated in place.
+            label = os.path.relpath(current, path) if current else 'done'
+            line = '[%i files, %i findings] %s' % (scanned, found, label)
+            cols = shutil.get_terminal_size((80, 20)).columns
+            avail = max(20, cols - 8)  # leave room for the log prefix
+            if len(line) > avail:
+                line = line[:avail - 1] + '…'
+            # ljust overwrites any leftovers from a longer previous path.
+            logger.info(line.ljust(avail) + '\r')
+        elif current is None or scanned % 50 == 0:
+            logger.info('Scanned %i files, %i findings' % (scanned, found))
 
     extra_ignore = []
     if output:  # never scan the report we are about to write

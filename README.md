@@ -98,6 +98,11 @@ Scan a directory:
 python xsstrike.py --scan-dir /path/to/source
 ```
 
+When run in an interactive terminal, a live status line shows which file is
+currently being scanned along with a running file/finding count, updated in
+place. When the output is piped or redirected, it falls back to periodic
+progress summaries so logs stay clean.
+
 Useful options:
 
 | Option | Description |
