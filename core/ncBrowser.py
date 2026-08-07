@@ -302,11 +302,13 @@ class NCBrowser(object):
         ind = self._status_indicator()
         if w < len(title) + len(ind) + 12:   # no room -> drop the indicator
             ind = ''
-        path = self.cwd
+        # A transient status message (e.g. F4 with nothing scanned) takes over
+        # the bar; otherwise show the current path.
+        body = self.message if self.message else self.cwd
         avail = w - len(title) - 2 - (len(ind) + 1 if ind else 0)
-        if avail > 3 and len(path) > avail:
-            path = '...' + path[-(avail - 3):]
-        line = (title + path).ljust(w - 1)
+        if avail > 3 and len(body) > avail:
+            body = ('...' + body[-(avail - 3):]) if not self.message else body[:avail]
+        line = (title + body).ljust(w - 1)
         self._addstr(0, 0, line, CP_STATUS, curses.A_BOLD, width=w - 1)
         if ind:
             self._addstr(0, max(0, w - 1 - len(ind)), ind, CP_STATUS, curses.A_BOLD)
