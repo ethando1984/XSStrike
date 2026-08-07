@@ -1,7 +1,10 @@
 ### Unreleased
-- Directory scan (`--scan-dir`) now shows a live status line naming the file
-  currently being scanned with a running file/finding count, updated in place
-  on interactive terminals; piped output keeps clean periodic summaries
+- Directory scan (`--scan-dir`) now draws the target as a live directory tree on
+  interactive terminals, updating each file's status in place (pending →
+  scanning → clean / N findings, coloured by severity) and rolling finding
+  totals up onto the parent directories when the scan finishes
+  - Falls back to a single live status line when the tree is taller than the
+    terminal, and to periodic summaries when output is piped/redirected
 - Upgraded the retire.js vulnerable-JS-library database (`db/definitions.json`)
   to the latest upstream (34 → 76 components, current CVEs)
 - Hardened the retireJs plugin against the fuller dataset:
