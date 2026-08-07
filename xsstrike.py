@@ -85,6 +85,8 @@ parser.add_argument('--log-file', help='Name of the file to log', dest='log_file
                     default=core.log.log_file)
 parser.add_argument('--scan-dir', help='scan a source code directory for vulnerabilities',
                     dest='scanDir')
+parser.add_argument('--browse', help='Norton Commander style interactive tree browser + scanner',
+                    dest='browse')
 parser.add_argument('--min-severity', help='minimum severity to report (CRITICAL/HIGH/MEDIUM/LOW)',
                     dest='minSeverity', default='LOW')
 parser.add_argument('--json-out', help='write the source scan report to a JSON file',
@@ -175,6 +177,10 @@ if not proxy:
 if update:  # if the user has supplied --update argument
     updater()
     quit()  # quitting because files have been changed
+
+if args.browse:  # interactive NC-style tree browser + scanner
+    from core.ncBrowser import browse
+    sys.exit(browse(args.browse, include_unknown=args.scanAllFiles))
 
 if args.scanDir:  # static source code scan, no target url needed
     sys.exit(codeScan(args.scanDir, output=args.jsonOut,

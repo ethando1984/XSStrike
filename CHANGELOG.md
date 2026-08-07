@@ -5,6 +5,13 @@
   totals up onto the parent directories when the scan finishes
   - Falls back to a single live status line when the tree is taller than the
     terminal, and to periodic summaries when output is piped/redirected
+- Added a Norton Commander style **interactive tree browser** (`--browse`):
+  a blue full-screen `curses` TUI with keyboard navigation, function-key
+  shortcuts and a live per-file/-directory status column, driving the same
+  engine as `--scan-dir` (same rules and `.xsstrikeignore`). Scan on demand
+  with `F5`/`F2`, view findings inline (`F3`/`F4`), and drop to a
+  Norton Commander style command line with `~` to run shell commands in the
+  browsed directory without leaving the tool
 - Upgraded the retire.js vulnerable-JS-library database (`db/definitions.json`)
   to the latest upstream (34 → 76 components, current CVEs)
 - Hardened the retireJs plugin against the fuller dataset:
