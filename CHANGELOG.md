@@ -23,6 +23,12 @@
   - `u` toggles listing/scanning of unknown file types at runtime
   - `--min-severity`, `--json-out` and `--scan-all-files` now seed the
     browser's initial state
+- `F5` (scan the selected folder's files) and `F2` (scan every file in the
+  folder on screen) now render a **scan report in the footer panel** — files
+  scanned, total findings, a severity breakdown and the top offending files
+  (severity-coloured, with a `… N more — F4 for the full report` overflow
+  line) — instead of only a transient one-line status message. The report
+  stays on screen until the next keypress, then per-file detail returns
 - Headless page rendering (Playwright) is now **on by default** while crawling;
   pass `--no-headless` to force plain-HTTP crawling. When Playwright is not
   installed XSStrike still falls back to static crawling automatically
