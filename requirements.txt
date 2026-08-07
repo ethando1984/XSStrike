@@ -1,3 +1,8 @@
-tld
-fuzzywuzzy
-requests
+# XSStrike core runs on the Python 3 standard library alone -- no third-party
+# packages are required to scan.
+#
+# (Previously required: tld [unused], fuzzywuzzy [replaced by difflib],
+#  requests [replaced by urllib.request].)
+#
+# Optional: the --headless / --browse browser features need Playwright:
+#   playwright
