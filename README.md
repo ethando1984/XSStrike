@@ -98,6 +98,25 @@ Scan a directory:
 python xsstrike.py --scan-dir /path/to/source
 ```
 
+When run in an interactive terminal, the directory is drawn as a live tree and
+each file's status is updated in place as it is scanned:
+
+```
+myapp/                 ✗ 5
+├─ api/                ✗ 4
+│  ├─ views.py         ✗ 3
+│  └─ __init__.py      ✓
+├─ utils/
+│  └─ helpers.py       ✓
+└─ main.py             ✗ 1
+```
+
+`·` = pending, `⟳` = scanning, `✓` = clean, `✗ N` = N findings (coloured by the
+highest severity). The finding totals roll up onto the parent directories when
+the scan finishes. If the tree is taller than the terminal it falls back to a
+single live status line, and when the output is piped or redirected it falls
+back to periodic progress summaries so logs stay clean.
+
 Useful options:
 
 | Option | Description |

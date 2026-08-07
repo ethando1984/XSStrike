@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import json
+import shutil
 import core.log
 
-from core.colors import green, red, yellow, end
-from core.staticScanner import scanDirectory
+from core.colors import green, red, yellow, end, colors
+from core.staticScanner import scanDirectory, collectFiles, loadIgnorePatterns
+from core.scanTree import ScanTree
 
 logger = core.log.setup_logger(__name__)
 
@@ -28,18 +31,54 @@ def codeScan(path, output=None, min_severity='LOW', include_unknown=False, limit
     path = os.path.abspath(path)
     logger.run('Scanning source directory: %s' % path)
 
-    def progress(scanned, found):
-        logger.info('Scanned %i files, %i findings\r' % (scanned, found))
-
     extra_ignore = []
     if output:  # never scan the report we are about to write
         out_abs = os.path.abspath(output)
         if out_abs.startswith(path + os.sep):
             extra_ignore.append(os.path.relpath(out_abs, path))
 
+    # ANSI cursor movement (used by the live tree) needs a real terminal that
+    # understands escape codes; on legacy Windows consoles we fall back.
+    live = sys.stdout.isatty()
+    ansi = live and (os.name != 'nt' or colors)
+
+    tree = None
+    files = None
+    if live:
+        ignore = loadIgnorePatterns(path) + extra_ignore
+        files = list(collectFiles(path, include_unknown, ignore))
+        if ansi:
+            tree = ScanTree(path, files)
+            if tree.fits():
+                logger.no_format('')
+                tree.render()
+            else:
+                tree = None  # too big for the screen, use the one-line status
+
+    def progress(scanned, found, current=None, file_findings=None):
+        if tree is not None:
+            if current is None:
+                tree.finish()
+            elif file_findings is None:
+                tree.mark_scanning(current)
+            else:
+                tree.mark_done(current, file_findings)
+        elif live:
+            # No tree: show which file is being scanned, updated in place.
+            label = os.path.relpath(current, path) if current else 'done'
+            line = '[%i files, %i findings] %s' % (scanned, found, label)
+            cols = shutil.get_terminal_size((80, 20)).columns
+            avail = max(20, cols - 8)  # leave room for the log prefix
+            if len(line) > avail:
+                line = line[:avail - 1] + '…'
+            # ljust overwrites any leftovers from a longer previous path.
+            logger.info(line.ljust(avail) + '\r')
+        elif current is None or (file_findings is not None and scanned % 50 == 0):
+            logger.info('Scanned %i files, %i findings' % (scanned, found))
+
     findings, scanned = scanDirectory(
         path, include_unknown=include_unknown, progress=progress,
-        extra_ignore=extra_ignore)
+        extra_ignore=extra_ignore, files=files)
     logger.no_format('')
 
     level = min_severity.upper()

@@ -335,14 +335,37 @@ def scanFile(path, lang, skip_comments=True):
 
 
 def scanDirectory(root, include_unknown=False, skip_comments=True, progress=None,
-                  extra_ignore=None):
-    """Scan every source file under root. Returns (findings, files_scanned)."""
+                  extra_ignore=None, files=None):
+    """Scan every source file under root. Returns (findings, files_scanned).
+
+    ``progress`` is called around every file as
+    ``progress(files_scanned, findings_so_far, current_path, file_findings)``:
+
+    * when a file is about to be scanned: ``current_path`` is that file and
+      ``file_findings`` is ``None`` (the "started" event);
+    * once the file has been scanned: ``current_path`` is that file and
+      ``file_findings`` is the list of :class:`Finding` for it (possibly empty,
+      the "finished" event);
+    * once the whole walk completes: ``current_path`` is ``None`` and
+      ``file_findings`` is ``None`` (the "done" event).
+
+    ``files`` may be a pre-computed iterable of ``(path, language)`` pairs (as
+    returned by :func:`collectFiles`) to avoid walking the tree twice; when it
+    is ``None`` the tree is walked here.
+    """
     findings = []
     scanned = 0
-    ignore = loadIgnorePatterns(root) + list(extra_ignore or [])
-    for path, lang in collectFiles(root, include_unknown, ignore):
-        findings.extend(scanFile(path, lang, skip_comments))
+    if files is None:
+        ignore = loadIgnorePatterns(root) + list(extra_ignore or [])
+        files = collectFiles(root, include_unknown, ignore)
+    for path, lang in files:
+        if progress:
+            progress(scanned, len(findings), path, None)
+        file_findings = scanFile(path, lang, skip_comments)
+        findings.extend(file_findings)
         scanned += 1
-        if progress and scanned % 50 == 0:
-            progress(scanned, len(findings))
+        if progress:
+            progress(scanned, len(findings), path, file_findings)
+    if progress:
+        progress(scanned, len(findings), None, None)
     return findings, scanned
