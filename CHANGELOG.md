@@ -9,7 +9,9 @@
   a blue full-screen `curses` TUI with keyboard navigation, function-key
   shortcuts and a live per-file/-directory status column, driving the same
   engine as `--scan-dir` (same rules and `.xsstrikeignore`). Scan on demand
-  with `F5`/`F2`, view findings inline (`F3`/`F4`)
+  with `F5`/`F2`, view findings inline (`F3`/`F4`), and drop to a
+  Norton Commander style command line with `~` to run shell commands in the
+  browsed directory without leaving the tool
 - Upgraded the retire.js vulnerable-JS-library database (`db/definitions.json`)
   to the latest upstream (34 → 76 components, current CVEs)
 - Hardened the retireJs plugin against the fuller dataset:

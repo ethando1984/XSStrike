@@ -189,6 +189,7 @@ python xsstrike.py --browse /path/to/source
 | `F3` / `v` | View the file with findings highlighted inline |
 | `F4` / `f` | Open the findings report for the selection |
 | `Tab` | Show / hide the results panel |
+| `~` | Command line: type a shell command and run it here |
 | `F1` / `h` | Help |
 | `F10` / `q` | Quit |
 
@@ -197,6 +198,12 @@ Each row shows a live status glyph — blank (not scanned), `✓` (clean) or `�
 of everything scanned beneath them. `--scan-all-files` also applies here to
 include files with unknown extensions. The browser needs an interactive
 terminal (it uses `curses`); for non-interactive/CI use `--scan-dir` instead.
+
+Like Norton Commander, pressing `~` opens a command line at the bottom of the
+screen: type any shell command and press Enter to run it in the currently
+browsed directory (`Esc` cancels). The command runs in your real terminal — live
+output and interactive programs work — then press Enter to return to the
+browser, which reloads the listing in case files changed.
 
 ### Headless Crawling
 By default the crawler discovers links from the raw HTML response. Modern,

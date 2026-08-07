@@ -12,6 +12,7 @@ static scanner from the keyboard, DOS-Commander style:
     F5 / s                        scan the selected file or directory
     F2 / a                        scan every file under the current directory
     Tab                           toggle the results panel
+    ~                             command line: type and run a shell command
     F1 / h                        help
     F10 / q                       quit
 
@@ -469,6 +470,8 @@ class NCBrowser(object):
             '  F3  / v           view the selected file (findings highlighted)',
             '  F4  / f           open the findings report for the selection',
             '  Tab               show / hide the results panel',
+            '  ~                 command line: type a shell command, run it',
+            '                    in this directory (Esc cancels)',
             '  F1  / h           this help',
             '  F10 / q           quit',
             '',
@@ -496,6 +499,71 @@ class NCBrowser(object):
                 if e.name == prev:
                     self.sel = i
                     break
+
+    # ---- command line (NC-style shell prompt) ------------------------------
+    def _command_line(self):
+        """Read a shell command at the bottom of the screen and run it.
+
+        Norton Commander's command line: press ``~`` to type a command, Enter
+        runs it in the current directory, Esc cancels. The command runs with
+        curses suspended so you get a real terminal — live output and even
+        interactive programs work — then control returns to the browser.
+        """
+        h, w = self.scr.getmaxyx()
+        prompt = (os.path.basename(self.cwd) or self.cwd) + '$ '
+        buf = ''
+        curses.curs_set(1)
+        try:
+            while True:
+                y = h - 2
+                shown = prompt + buf
+                # keep the tail visible if the line is longer than the screen
+                if len(shown) > w - 1:
+                    shown = shown[len(shown) - (w - 1):]
+                self._addstr(y, 0, shown.ljust(w - 1), CP_STATUS, width=w - 1)
+                try:
+                    self.scr.move(y, min(len(shown), w - 2))
+                except curses.error:
+                    pass
+                self.scr.noutrefresh()
+                curses.doupdate()
+                c = self.scr.getch()
+                if c == 27:                                   # Esc — cancel
+                    return
+                if c in (ord('\n'), curses.KEY_ENTER):
+                    break
+                if c in (curses.KEY_BACKSPACE, 127, 8):
+                    buf = buf[:-1]
+                elif c == curses.KEY_UP or c == curses.KEY_DOWN:
+                    pass                                      # no history (yet)
+                elif 32 <= c < 127:
+                    buf += chr(c)
+        finally:
+            curses.curs_set(0)
+
+        cmd = buf.strip()
+        if cmd:
+            self._run_shell(cmd)
+            self._load_dir(self.cwd)   # files may have changed; refresh listing
+
+    def _run_shell(self, cmd):
+        """Run ``cmd`` in a real terminal, then wait and restore the browser."""
+        import subprocess
+        curses.def_prog_mode()   # remember curses state
+        curses.endwin()          # hand the terminal back to the shell
+        try:
+            print('\n\033[36m%s$\033[0m %s' % (self.cwd, cmd))
+            try:
+                subprocess.call(cmd, shell=True, cwd=self.cwd)
+            except Exception as exc:   # keep the browser alive on any failure
+                print('command failed: %s' % exc)
+            try:
+                input('\n[Press Enter to return to XSStrike Commander] ')
+            except (EOFError, KeyboardInterrupt):
+                pass
+        finally:
+            curses.reset_prog_mode()   # back into curses
+            self.scr.refresh()
 
     def run(self):
         while True:
@@ -532,6 +600,8 @@ class NCBrowser(object):
                 self._help()
             elif c == ord('\t'):
                 self.show_panel = not self.show_panel
+            elif c == ord('~'):
+                self._command_line()
             elif c in (curses.KEY_F10, ord('q'), 27):
                 break
 
