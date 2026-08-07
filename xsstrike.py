@@ -60,8 +60,10 @@ parser.add_argument('--skip', help='don\'t ask to continue',
                     dest='skip', action='store_true')
 parser.add_argument('--skip-dom', help='skip dom checking',
                     dest='skipDOM', action='store_true')
-parser.add_argument('--headless', help='render pages with a headless browser (Playwright) while crawling',
-                    dest='headless', action='store_true')
+parser.add_argument('--headless', help='render pages with a headless browser (Playwright) while crawling (default: on)',
+                    dest='headless', action='store_true', default=True)
+parser.add_argument('--no-headless', help='disable the headless browser and use plain HTTP requests only',
+                    dest='headless', action='store_false')
 parser.add_argument('--blind', help='inject blind XSS payload while crawling',
                     dest='blindXSS', action='store_true')
 parser.add_argument('--console-log-level', help='Console logging level',
@@ -168,7 +170,8 @@ if update:  # if the user has supplied --update argument
 
 if args.browse:  # interactive NC-style tree browser + scanner
     from core.ncBrowser import browse
-    sys.exit(browse(args.browse, include_unknown=args.scanAllFiles))
+    sys.exit(browse(args.browse, include_unknown=args.scanAllFiles,
+                    min_severity=args.minSeverity, json_out=args.jsonOut))
 
 if args.scanDir:  # static source code scan, no target url needed
     sys.exit(codeScan(args.scanDir, output=args.jsonOut,

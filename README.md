@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="https://github.com/s0md3v/XSStrike"><img src="https://image.ibb.co/cpuYoA/xsstrike-logo.png" alt="XSStrike"></a>
+  <a href="https://github.com/ethando1984/XSStrike"><img src="https://image.ibb.co/cpuYoA/xsstrike-logo.png" alt="XSStrike"></a>
   <br>
   XSStrike
   <br>
@@ -9,26 +9,24 @@
 <h4 align="center">Advanced XSS Detection Suite</h4>
 
 <p align="center">
-  <a href="https://github.com/s0md3v/XSStrike/releases">
-    <img src="https://img.shields.io/github/release/s0md3v/XSStrike.svg">
+  <a href="https://github.com/ethando1984/XSStrike/releases">
+    <img src="https://img.shields.io/github/release/ethando1984/XSStrike.svg">
   </a>
-  <a href="https://travis-ci.com/s0md3v/XSStrike">
-    <img src="https://img.shields.io/travis/com/s0md3v/XSStrike.svg">
+  <a href="https://travis-ci.com/ethando1984/XSStrike">
+    <img src="https://img.shields.io/travis/com/ethando1984/XSStrike.svg">
   </a>
-  <a href="https://github.com/s0md3v/XSStrike/issues?q=is%3Aissue+is%3Aclosed">
-      <img src="https://img.shields.io/github/issues-closed-raw/s0md3v/XSStrike.svg">
+  <a href="https://github.com/ethando1984/XSStrike/issues?q=is%3Aissue+is%3Aclosed">
+      <img src="https://img.shields.io/github/issues-closed-raw/ethando1984/XSStrike.svg">
   </a>
 </p>
 
-![multi xss](https://image.ibb.co/gOCV5L/Screenshot-2018-11-19-13-33-49.png)
-
 <p align="center">
-  <a href="https://github.com/s0md3v/XSStrike/wiki">XSStrike Wiki</a> •
-  <a href="https://github.com/s0md3v/XSStrike/wiki/Usage">Usage</a> •
-  <a href="https://github.com/s0md3v/XSStrike/wiki/FAQ">FAQ</a> •
-  <a href="https://github.com/s0md3v/XSStrike/wiki/For-Developers">For Developers</a> •
-  <a href="https://github.com/s0md3v/XSStrike/wiki/Compatibility-&-Dependencies">Compatibility</a> •
-  <a href="https://github.com/s0md3v/XSStrike#gallery">Gallery</a>
+  <a href="https://github.com/ethando1984/XSStrike/wiki">XSStrike Wiki</a> •
+  <a href="https://github.com/ethando1984/XSStrike/wiki/Usage">Usage</a> •
+  <a href="https://github.com/ethando1984/XSStrike/wiki/FAQ">FAQ</a> •
+  <a href="https://github.com/ethando1984/XSStrike/wiki/For-Developers">For Developers</a> •
+  <a href="https://github.com/ethando1984/XSStrike/wiki/Compatibility-&-Dependencies">Compatibility</a> •
+  <a href="https://github.com/ethando1984/XSStrike#gallery">Gallery</a>
 </p>
 
 XSStrike is a Cross Site Scripting detection suite equipped with four hand written parsers, an intelligent payload generator, a powerful fuzzing engine and an incredibly fast crawler.
@@ -77,7 +75,7 @@ Works with POST/JSON too (via `--data` / `--json`). To avoid false positives, fi
 ### Installation
 Enter the following commands one by one in terminal:
 ```
-git clone https://github.com/s0md3v/XSStrike
+git clone https://github.com/ethando1984/XSStrike
 cd XSStrike
 pip install -r requirements.txt --break-system-packages
 ```
@@ -179,6 +177,29 @@ findings match the batch scan.
 python xsstrike.py --browse /path/to/source
 ```
 
+```
+ XSStrike Commander  /path/to/myapp                sort:severity  sev>=HIGH
+╔════════════════════════════════════════════════════════════════════════╗
+║ Name                                                    Size  Stat      ║
+║ /..                                                                     ║
+║ /api                                                          ✗4        ║
+║ /utils                                                                  ║
+║  views.py                                               1K    ✗3        ║
+║  helpers.py                                             512   ✓         ║
+║  README.md                                              2K              ║
+╚════════════════════════════════════════════════════════════════════════╝
+──────────────────────────────────────────────────────────────────────────
+ views.py — 3 finding(s):
+ [HIGH]   line 42  Reflected XSS sink (CWE-79)
+ [MEDIUM] line 88  Server-Side Request Forgery (CWE-918)
+   ... press F4 for the full report.
+F1 Help  F2 ScanAll  F3 View  F4 Finds  F5 Scan  F9 Sort  F10 Quit
+```
+
+Top line: current directory plus a live view-state indicator (`sort:…`,
+`sev>=…`, `all-files`). Middle: the file panel with a per-row status column.
+Bottom: the findings panel for the selection and the function-key bar.
+
 | Key | Action |
 | --- | --- |
 | `↑ ↓` / `PgUp PgDn` / `Home End` | Move the selection bar |
@@ -188,6 +209,10 @@ python xsstrike.py --browse /path/to/source
 | `F2` / `a` | Scan everything under the current directory |
 | `F3` / `v` | View the file with findings highlighted inline |
 | `F4` / `f` | Open the findings report for the selection |
+| `F9` / `o` | Cycle the sort order: name → severity → size |
+| `m` | Cycle the minimum-severity filter (hide lower findings) |
+| `e` | Export the current findings to a JSON report |
+| `u` | Toggle listing/scanning of unknown file types |
 | `Tab` | Show / hide the results panel |
 | `~` | Command line: type a shell command and run it here |
 | `F1` / `h` | Help |
@@ -195,9 +220,16 @@ python xsstrike.py --browse /path/to/source
 
 Each row shows a live status glyph — blank (not scanned), `✓` (clean) or `✗N`
 (N findings, colored by worst severity) — and directory rows roll up the totals
-of everything scanned beneath them. `--scan-all-files` also applies here to
-include files with unknown extensions. The browser needs an interactive
-terminal (it uses `curses`); for non-interactive/CI use `--scan-dir` instead.
+of everything scanned beneath them.
+
+The same options as the batch scan are available without leaving the browser:
+`F9`/`o` cycles the sort order, `m` raises or lowers the minimum-severity
+filter (applied consistently to the status glyphs, detail panel, file view and
+report), `e` exports the visible findings to JSON (same schema as
+`--json-out`), and `u` toggles scanning of unknown file types. Passing
+`--min-severity`, `--json-out` or `--scan-all-files` on the command line simply
+seeds their starting values. The browser needs an interactive terminal (it uses
+`curses`); for non-interactive/CI use `--scan-dir` instead.
 
 Like Norton Commander, pressing `~` opens a command line at the bottom of the
 screen: type any shell command and press Enter to run it in the currently
@@ -206,19 +238,23 @@ output and interactive programs work — then press Enter to return to the
 browser, which reloads the listing in case files changed.
 
 ### Headless Crawling
-By default the crawler discovers links from the raw HTML response. Modern,
-JavaScript-heavy pages often build their markup client-side, so those links
-never appear in the static response. Pass `--headless` to render each page with
-a headless browser (Playwright) while crawling, so dynamically injected links
-and parameters are discovered too:
+Modern, JavaScript-heavy pages often build their markup client-side, so links
+and parameters never appear in the raw HTML response. XSStrike therefore renders
+each page with a headless browser (Playwright) **by default** while crawling, so
+dynamically injected links are discovered too:
 
 ```bash
-python xsstrike.py -u "https://example.com" --crawl --headless
+python xsstrike.py -u "https://example.com" --crawl
 ```
 
 This needs Playwright installed (`pip install playwright` then
 `playwright install chromium`). Without it, XSStrike falls back to static
-crawling automatically.
+crawling automatically. To force plain-HTTP crawling and skip the browser
+entirely, pass `--no-headless`:
+
+```bash
+python xsstrike.py -u "https://example.com" --crawl --no-headless
+```
 
 ### Outdated JavaScript Library Scanning
 While crawling, XSStrike fingerprints the JavaScript libraries a page loads and
@@ -233,34 +269,56 @@ version matched. No extra flags are required — it runs as part of a normal
 crawl/scan.
 
 ### Documentation
-- [Usage](https://github.com/s0md3v/XSStrike/wiki/Usage)
-- [Compatibility & Dependencies](https://github.com/s0md3v/XSStrike/wiki/Compatibility-&-Dependencies)
+- [Usage](https://github.com/ethando1984/XSStrike/wiki/Usage)
+- [Compatibility & Dependencies](https://github.com/ethando1984/XSStrike/wiki/Compatibility-&-Dependencies)
 
 ### FAQ
-- [It says fuzzywuzzy isn't installed but it is.](https://github.com/s0md3v/XSStrike/wiki/FAQ#it-says-fuzzywuzzy-is-not-installed-but-its)
-- [What's up with Blind XSS?](https://github.com/s0md3v/XSStrike/wiki/FAQ#whats-up-with-blind-xss)
-- [Why XSStrike boasts that it is the most advanced XSS detection suite?](https://github.com/s0md3v/XSStrike/wiki/FAQ#why-xsstrike-boasts-that-it-is-the-most-advanced-xss-detection-suite)
-- [I like the project, what enhancements and features I can expect in future?](https://github.com/s0md3v/XSStrike/wiki/FAQ#i-like-the-project-what-enhancements-and-features-i-can-expect-in-future)
-- [What's the false positive/negative rate?](https://github.com/s0md3v/XSStrike/wiki/FAQ#whats-the-false-positivenegative-rate)
-- [Tool xyz works against the target, while XSStrike doesn't!](https://github.com/s0md3v/XSStrike/wiki/FAQ#tool-xyz-works-against-the-target-while-xsstrike-doesnt)
-- [Can I copy it's code?](https://github.com/s0md3v/XSStrike/wiki/FAQ#can-i-copy-its-code)
-- [What if I want to embed it into a proprietary software?](https://github.com/s0md3v/XSStrike/wiki/FAQ#what-if-i-want-to-embed-it-into-a-proprietary-software)
+- [It says fuzzywuzzy isn't installed but it is.](https://github.com/ethando1984/XSStrike/wiki/FAQ#it-says-fuzzywuzzy-is-not-installed-but-its)
+- [What's up with Blind XSS?](https://github.com/ethando1984/XSStrike/wiki/FAQ#whats-up-with-blind-xss)
+- [Why XSStrike boasts that it is the most advanced XSS detection suite?](https://github.com/ethando1984/XSStrike/wiki/FAQ#why-xsstrike-boasts-that-it-is-the-most-advanced-xss-detection-suite)
+- [I like the project, what enhancements and features I can expect in future?](https://github.com/ethando1984/XSStrike/wiki/FAQ#i-like-the-project-what-enhancements-and-features-i-can-expect-in-future)
+- [What's the false positive/negative rate?](https://github.com/ethando1984/XSStrike/wiki/FAQ#whats-the-false-positivenegative-rate)
+- [Tool xyz works against the target, while XSStrike doesn't!](https://github.com/ethando1984/XSStrike/wiki/FAQ#tool-xyz-works-against-the-target-while-xsstrike-doesnt)
+- [Can I copy it's code?](https://github.com/ethando1984/XSStrike/wiki/FAQ#can-i-copy-its-code)
+- [What if I want to embed it into a proprietary software?](https://github.com/ethando1984/XSStrike/wiki/FAQ#what-if-i-want-to-embed-it-into-a-proprietary-software)
 
 ### Gallery
-#### DOM XSS
-![dom xss](https://image.ibb.co/bQaQ5L/Screenshot-2018-11-19-13-48-19.png)
-#### Reflected XSS
-![multi xss](https://image.ibb.co/gJogUf/Screenshot-2018-11-19-14-19-36.png)
-#### Crawling
-![crawling](https://image.ibb.co/e6Rezf/Screenshot-2018-11-19-13-50-59.png)
-#### Fuzzing
-![fuzzing](https://image.ibb.co/fnhuFL/Screenshot-2018-11-19-14-04-46.png)
-#### Bruteforcing payloads from a file
-![bruteforcing](https://image.ibb.co/dy5EFL/Screenshot-2018-11-19-14-08-36.png)
-#### Interactive HTTP Headers Prompt
-![headers](https://image.ibb.co/ecNph0/Screenshot-2018-11-19-14-29-35.png)
-#### Hidden Parameter Discovery
-![arjun](https://image.ibb.co/effjh0/Screenshot-2018-11-19-14-16-51.png)
+#### Interactive Commander browser (`--browse`)
+A blue full-screen `curses` UI: a file panel with a live per-file status column,
+a findings panel and a function-key bar. The top line echoes the current sort
+order and severity filter.
+
+```
+ XSStrike Commander  /path/to/myapp                sort:severity  sev>=HIGH
+╔════════════════════════════════════════════════════════════════════════╗
+║ Name                                                    Size  Stat      ║
+║ /..                                                                     ║
+║ /api                                                          ✗4        ║
+║ /utils                                                                  ║
+║  views.py                                               1K    ✗3        ║
+║  helpers.py                                             512   ✓         ║
+║  README.md                                              2K              ║
+╚════════════════════════════════════════════════════════════════════════╝
+──────────────────────────────────────────────────────────────────────────
+ views.py — 3 finding(s):
+ [HIGH]   line 42  Reflected XSS sink (CWE-79)
+ [MEDIUM] line 88  Server-Side Request Forgery (CWE-918)
+   ... press F4 for the full report.
+F1 Help  F2 ScanAll  F3 View  F4 Finds  F5 Scan  F9 Sort  F10 Quit
+```
+
+#### Static source scan (`--scan-dir`)
+A live directory tree with per-file status, updated in place as it scans:
+
+```
+myapp/                 ✗ 5
+├─ api/                ✗ 4
+│  ├─ views.py         ✗ 3
+│  └─ __init__.py      ✓
+├─ utils/
+│  └─ helpers.py       ✓
+└─ main.py             ✗ 1
+```
 
 ### Contribution, Credits & License
 Ways to contribute

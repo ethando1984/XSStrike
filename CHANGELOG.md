@@ -12,6 +12,20 @@
   with `F5`/`F2`, view findings inline (`F3`/`F4`), and drop to a
   Norton Commander style command line with `~` to run shell commands in the
   browsed directory without leaving the tool
+- Brought the batch-scan options into the `--browse` TUI so they work without
+  leaving it, with a status-line indicator showing the current view state:
+  - `F9`/`o` cycles the sort order (name → severity → size) — the key was
+    advertised on the function bar but previously did nothing
+  - `m` cycles the minimum-severity filter, hiding lower findings everywhere
+    (list glyphs, detail panel, file view and report)
+  - `e` exports the visible findings to a JSON report (same schema as
+    `--json-out`)
+  - `u` toggles listing/scanning of unknown file types at runtime
+  - `--min-severity`, `--json-out` and `--scan-all-files` now seed the
+    browser's initial state
+- Headless page rendering (Playwright) is now **on by default** while crawling;
+  pass `--no-headless` to force plain-HTTP crawling. When Playwright is not
+  installed XSStrike still falls back to static crawling automatically
 - Upgraded the retire.js vulnerable-JS-library database (`db/definitions.json`)
   to the latest upstream (34 → 76 components, current CVEs)
 - Hardened the retireJs plugin against the fuller dataset:

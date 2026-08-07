@@ -30,6 +30,7 @@ from core.staticScanner import (
 )
 
 SEVERITY_ORDER = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
+SORT_MODES = ['name', 'severity', 'size']
 
 # ---- curses color-pair ids (Norton Commander blue theme) -----------------
 CP_PANEL = 1     # white on blue        normal rows / panel body
@@ -84,11 +85,18 @@ class Entry(object):
 class NCBrowser(object):
     """Stateful full-screen browser. Call :meth:`run` inside curses.wrapper."""
 
-    def __init__(self, screen, root, include_unknown=False):
+    def __init__(self, screen, root, include_unknown=False,
+                 min_severity='LOW', json_out=None):
         self.scr = screen
         self.root = os.path.abspath(root)
         self.cwd = self.root
         self.include_unknown = include_unknown
+        self.sort_mode = 'name'   # name | severity | size  (F9 cycles)
+        try:                      # min severity to *display* (LOW == show all)
+            self.min_sev_idx = SEVERITY_ORDER.index((min_severity or 'LOW').upper())
+        except ValueError:
+            self.min_sev_idx = len(SEVERITY_ORDER) - 1
+        self.json_out = json_out or 'xsstrike-report.json'
         self.sel = 0            # index of the selection bar
         self.top = 0            # first visible row (scroll offset)
         self.entries = []
@@ -98,6 +106,12 @@ class NCBrowser(object):
         self.show_panel = True  # results panel visibility
         self.ignore = loadIgnorePatterns(self.root)
         self._load_dir(self.cwd)
+
+    # ---- severity filter ---------------------------------------------------
+    def _visible(self, findings):
+        """Findings at or above the current minimum-severity filter."""
+        return [f for f in findings
+                if SEVERITY_ORDER.index(f.severity) <= self.min_sev_idx]
 
     # ---- directory listing -------------------------------------------------
     def _scannable_file(self, name, full):
@@ -132,14 +146,51 @@ class NCBrowser(object):
                 dirs.append(Entry(name, full, True))
             elif self._scannable_file(name, full):
                 files.append(Entry(name, full, False))
-        dirs.sort(key=lambda e: e.name.lower())
-        files.sort(key=lambda e: e.name.lower())
         self.entries = []
         if self.cwd != self.root and os.path.dirname(self.cwd) != self.cwd:
             self.entries.append(Entry('..', os.path.dirname(self.cwd), True, True))
         self.entries += dirs + files
+        self._apply_sort()
         self.sel = 0
         self.top = 0
+
+    # ---- sorting -----------------------------------------------------------
+    def _safe_size(self, path):
+        try:
+            return os.path.getsize(path)
+        except OSError:
+            return 0
+
+    def _file_sev_rank(self, path):
+        fs = self._visible(self.results.get(path, [])) if path in self.scanned else []
+        worst = _worst(fs)
+        return SEVERITY_ORDER.index(worst) if worst is not None else 99
+
+    def _dir_sev_rank(self, path):
+        best = 99
+        prefix = path.rstrip(os.sep) + os.sep
+        for p, fs in self.results.items():
+            if p.startswith(prefix):
+                worst = _worst(self._visible(fs))
+                if worst is not None:
+                    best = min(best, SEVERITY_ORDER.index(worst))
+        return best
+
+    def _apply_sort(self):
+        """Reorder ``self.entries`` in place: '..' first, dirs, then files."""
+        parent = [e for e in self.entries if e.is_parent]
+        dirs = [e for e in self.entries if e.is_dir and not e.is_parent]
+        files = [e for e in self.entries if not e.is_dir]
+        if self.sort_mode == 'severity':
+            dirs.sort(key=lambda e: (self._dir_sev_rank(e.path), e.name.lower()))
+            files.sort(key=lambda e: (self._file_sev_rank(e.path), e.name.lower()))
+        elif self.sort_mode == 'size':
+            dirs.sort(key=lambda e: e.name.lower())
+            files.sort(key=lambda e: (-self._safe_size(e.path), e.name.lower()))
+        else:  # name
+            dirs.sort(key=lambda e: e.name.lower())
+            files.sort(key=lambda e: e.name.lower())
+        self.entries = parent + dirs + files
 
     # ---- scanning ----------------------------------------------------------
     def _files_under(self, path):
@@ -190,7 +241,7 @@ class NCBrowser(object):
     def _file_annot(self, path):
         if path not in self.scanned:
             return ' ', CP_PANEL
-        fs = self.results.get(path, [])
+        fs = self._visible(self.results.get(path, []))
         if not fs:
             return '✓', CP_CLEAN            # ✓
         sev = _worst(fs)
@@ -201,6 +252,7 @@ class NCBrowser(object):
         worst = None
         for p, fs in self.results.items():
             if p.startswith(path + os.sep):
+                fs = self._visible(fs)
                 total += len(fs)
                 s = _worst(fs)
                 if s is not None:
@@ -237,14 +289,27 @@ class NCBrowser(object):
         except curses.error:
             pass
 
+    def _status_indicator(self):
+        parts = ['sort:%s' % self.sort_mode]
+        if self.min_sev_idx < len(SEVERITY_ORDER) - 1:
+            parts.append('sev>=%s' % SEVERITY_ORDER[self.min_sev_idx])
+        if self.include_unknown:
+            parts.append('all-files')
+        return ' '.join(parts) + ' '
+
     def _draw_status(self, w):
         title = ' XSStrike Commander '
+        ind = self._status_indicator()
+        if w < len(title) + len(ind) + 12:   # no room -> drop the indicator
+            ind = ''
         path = self.cwd
-        avail = w - len(title) - 2
-        if len(path) > avail:
+        avail = w - len(title) - 2 - (len(ind) + 1 if ind else 0)
+        if avail > 3 and len(path) > avail:
             path = '...' + path[-(avail - 3):]
         line = (title + path).ljust(w - 1)
         self._addstr(0, 0, line, CP_STATUS, curses.A_BOLD, width=w - 1)
+        if ind:
+            self._addstr(0, max(0, w - 1 - len(ind)), ind, CP_STATUS, curses.A_BOLD)
 
     def _draw_frame(self, h, w):
         lh = self._list_height(h)
@@ -332,7 +397,7 @@ class NCBrowser(object):
             return [head, 'Not scanned yet — F5 scans this dir, F2 scans everything.']
         if e.path not in self.scanned:
             return ['FILE %s' % e.name, 'Not scanned yet — press F5 to scan.']
-        fs = self.results.get(e.path, [])
+        fs = self._visible(self.results.get(e.path, []))
         if not fs:
             return ['\x00LOW\x01FILE %s — clean, no issues found.' % e.name]
         fs = sorted(fs, key=lambda f: (SEVERITY_ORDER.index(f.severity), f.line_no))
@@ -410,7 +475,7 @@ class NCBrowser(object):
             self.message = 'Not a file.'
             return
         lines = []
-        fs = sorted(self.results.get(e.path, []),
+        fs = sorted(self._visible(self.results.get(e.path, [])),
                     key=lambda f: (SEVERITY_ORDER.index(f.severity), f.line_no))
         flagged = {f.line_no for f in fs}
         if fs:
@@ -441,8 +506,7 @@ class NCBrowser(object):
             if p == target or p.startswith(target.rstrip(os.sep) + os.sep) or not os.path.isdir(target):
                 if not (p == target or p.startswith(target.rstrip(os.sep) + os.sep)):
                     continue
-                for f in self.results[p]:
-                    rows.append(f)
+                rows.extend(self._visible(self.results[p]))
         if not rows:
             self.message = 'No findings for the selection — scan it first (F5).'
             return
@@ -455,6 +519,101 @@ class NCBrowser(object):
             lines.append('        %s' % f.snippet)
             lines.append('')
         self._pager('Findings (%d)' % len(rows), lines)
+
+    # ---- interactive feature toggles --------------------------------------
+    def _cycle_sort(self):
+        cur = self._current()
+        self.sort_mode = SORT_MODES[(SORT_MODES.index(self.sort_mode) + 1)
+                                    % len(SORT_MODES)]
+        self._apply_sort()
+        self.sel, self.top = 0, 0
+        if cur is not None:                 # keep the bar on the same entry
+            for i, e in enumerate(self.entries):
+                if e.path == cur.path:
+                    self.sel = i
+                    break
+        self.message = 'Sorted by %s' % self.sort_mode
+
+    def _cycle_severity(self):
+        self.min_sev_idx = (self.min_sev_idx + 1) % len(SEVERITY_ORDER)
+        if self.sort_mode == 'severity':    # ranks depend on the filter
+            self._apply_sort()
+        if self.min_sev_idx == len(SEVERITY_ORDER) - 1:
+            self.message = 'Severity filter: showing all findings'
+        else:
+            self.message = ('Severity filter: %s and above'
+                            % SEVERITY_ORDER[self.min_sev_idx])
+
+    def _toggle_unknown(self):
+        self.include_unknown = not self.include_unknown
+        self._load_dir(self.cwd)
+        self.message = ('Now listing/scanning unknown file types'
+                        if self.include_unknown else
+                        'Ignoring unknown file types')
+
+    def _export_json(self):
+        import json
+        findings = []
+        for p in sorted(self.results):
+            findings.extend(self._visible(self.results[p]))
+        if not findings:
+            self.message = ('Nothing to export — scan first (F5/F2) '
+                            'or lower the severity filter (m).')
+            return
+        findings.sort(key=lambda f: (SEVERITY_ORDER.index(f.severity),
+                                     f.path, f.line_no))
+        dest = self._prompt_text('Write JSON report to', self.json_out)
+        if not dest:
+            self.message = 'Export cancelled.'
+            return
+        self.json_out = dest
+        counts = {level: 0 for level in SEVERITY_ORDER}
+        for f in findings:
+            counts[f.severity] += 1
+        report = dict(
+            target=self.root,
+            files_scanned=len(self.scanned),
+            total_findings=len(findings),
+            summary=counts,
+            findings=[f.as_dict() for f in findings],
+        )
+        path = dest if os.path.isabs(dest) else os.path.join(self.cwd, dest)
+        try:
+            with open(path, 'w', encoding='utf-8') as handle:
+                json.dump(report, handle, indent=2)
+            self.message = 'Wrote %d finding(s) to %s' % (len(findings), path)
+        except (IOError, OSError) as exc:
+            self.message = 'Export failed: %s' % exc
+
+    def _prompt_text(self, label, default=''):
+        """Read a single line at the bottom of the screen. Esc returns None."""
+        h, w = self.scr.getmaxyx()
+        buf = default
+        curses.curs_set(1)
+        try:
+            while True:
+                y = h - 2
+                shown = '%s: %s' % (label, buf)
+                if len(shown) > w - 1:
+                    shown = shown[len(shown) - (w - 1):]
+                self._addstr(y, 0, shown.ljust(w - 1), CP_STATUS, width=w - 1)
+                try:
+                    self.scr.move(y, min(len(shown), w - 2))
+                except curses.error:
+                    pass
+                self.scr.noutrefresh()
+                curses.doupdate()
+                c = self.scr.getch()
+                if c == 27:                                   # Esc — cancel
+                    return None
+                if c in (ord('\n'), curses.KEY_ENTER):
+                    return buf.strip()
+                if c in (curses.KEY_BACKSPACE, 127, 8):
+                    buf = buf[:-1]
+                elif 32 <= c < 127:
+                    buf += chr(c)
+        finally:
+            curses.curs_set(0)
 
     def _help(self):
         lines = [
@@ -469,6 +628,10 @@ class NCBrowser(object):
             '  F2  / a           scan EVERYTHING under the current directory',
             '  F3  / v           view the selected file (findings highlighted)',
             '  F4  / f           open the findings report for the selection',
+            '  F9  / o           sort:  name -> severity -> size',
+            '  m                 min-severity filter (hide lower findings)',
+            '  e                 export findings to a JSON report file',
+            '  u                 toggle listing/scanning of unknown file types',
             '  Tab               show / hide the results panel',
             '  ~                 command line: type a shell command, run it',
             '                    in this directory (Esc cancels)',
@@ -598,6 +761,14 @@ class NCBrowser(object):
                 self._findings_report()
             elif c in (curses.KEY_F1, ord('h'), ord('?')):
                 self._help()
+            elif c in (curses.KEY_F9, ord('o')):
+                self._cycle_sort()
+            elif c == ord('m'):
+                self._cycle_severity()
+            elif c == ord('e'):
+                self._export_json()
+            elif c == ord('u'):
+                self._toggle_unknown()
             elif c == ord('\t'):
                 self.show_panel = not self.show_panel
             elif c == ord('~'):
@@ -625,8 +796,12 @@ def _init_colors():
     curses.init_pair(CP_STATUS, curses.COLOR_BLACK, curses.COLOR_CYAN)
 
 
-def browse(root, include_unknown=False):
+def browse(root, include_unknown=False, min_severity='LOW', json_out=None):
     """Launch the Norton Commander style browser rooted at ``root``.
+
+    ``include_unknown``, ``min_severity`` and ``json_out`` seed the same
+    options exposed by ``--scan-all-files``, ``--min-severity`` and
+    ``--json-out``; all three stay adjustable from inside the browser.
 
     Returns a process exit code (0 always; the browser is interactive).
     """
@@ -639,7 +814,7 @@ def browse(root, include_unknown=False):
         _init_colors()
         screen.bkgd(' ', curses.color_pair(CP_PANEL))
         screen.keypad(True)
-        NCBrowser(screen, root, include_unknown).run()
+        NCBrowser(screen, root, include_unknown, min_severity, json_out).run()
 
     curses.wrapper(_main)
     return 0
